@@ -18,6 +18,7 @@
  *    b) Pago recurrente supera en más de un 20% el promedio usual de los últimos 3 meses.
  */
 
+import { z } from "zod";
 import type { Currency, DecisionOutcome, RuleResult } from "./types";
 
 export type JevAction = "aprobar" | "escalar" | "frenar";
@@ -31,29 +32,56 @@ export type JevReason =
   | "factura_duplicada"
   | "datos_faltantes_o_contradictorios";
 
-export type JevDecisionInput = {
-  supplier: string;
-  amount: number;
-  currency: Currency;
-  amountUsd: number;
-  isApprovedSupplier: boolean;
-  isNewSupplier: boolean;
-  dailySpentUsd?: number;
-  dailyLimitMaxUsd?: number; // Límite diario absoluto: 1000 USD
-  dailyApprovalThresholdUsd?: number; // Umbral de aprobación humana: 100 USD
-  invoiceNumber?: string;
-  isDuplicate?: boolean;
-  duplicateDetails?: string;
-  missingFields?: string[];
-  hasContradictions?: boolean;
-  contradictionDetails?: string;
-  isRecurring?: boolean;
-  recurringAverageUsd?: number;
-  recurringVariationPct?: number;
+export const CurrencySchema = z.enum(["USD", "EUR", "COP", "MXN", "BRL", "ARS"]);
+
+export const JevInputSchema = z.object({
+  supplier: z.string().min(1),
+  amount: z.number().positive(),
+  currency: CurrencySchema,
+  amountUsd: z.number().positive(),
+  isApprovedSupplier: z.boolean(),
+  isNewSupplier: z.boolean(),
+  dailySpentUsd: z.number().optional(),
+  dailyLimitMaxUsd: z.number().optional(), // Límite diario absoluto: 1000 USD
+  dailyApprovalThresholdUsd: z.number().optional(), // Umbral de aprobación humana: 100 USD
+  invoiceNumber: z.string().optional(),
+  isDuplicate: z.boolean().optional(),
+  duplicateDetails: z.string().optional(),
+  missingFields: z.array(z.string()).optional(),
+  hasContradictions: z.boolean().optional(),
+  contradictionDetails: z.string().optional(),
+  isRecurring: z.boolean().optional(),
+  recurringAverageUsd: z.number().optional(),
+  recurringVariationPct: z.number().optional(),
+});
+
+export type JevDecisionInput = z.infer<typeof JevInputSchema>;
+
+
+export type JevQuestionChoice = {
+  type: "choice";
+  instructions: string;
+  criteria: Record<string, string>;
+};
+
+export type JevQuestionNoul = {
+  type: "noul";
+  instructions: string;
+};
+
+export type JevQuestionsSchema = {
+  action: JevQuestionChoice;
+  motivo: JevQuestionChoice;
+  supera_limite_absoluto_1000: JevQuestionNoul;
+  supera_umbral_diario_100: JevQuestionNoul;
+  es_compra_nueva: JevQuestionNoul;
+  es_duplicada: JevQuestionNoul;
+  requiere_completar_datos: JevQuestionNoul;
+  variacion_recurrente_excede_20: JevQuestionNoul;
 };
 
 export type JevApiResponse = {
-  model?: string;
+  model?: string | undefined;
   answers: {
     action: {
       type: "choice";
@@ -67,18 +95,18 @@ export type JevApiResponse = {
       confidence: number;
       probabilities: Record<JevReason, number>;
     };
-    supera_limite_absoluto_1000?: { type: "noul"; noul: number };
-    supera_umbral_diario_100?: { type: "noul"; noul: number };
-    es_compra_nueva?: { type: "noul"; noul: number };
-    es_duplicada?: { type: "noul"; noul: number };
-    requiere_completar_datos?: { type: "noul"; noul: number };
-    variacion_recurrente_excede_20?: { type: "noul"; noul: number };
+    supera_limite_absoluto_1000?: { type: "noul"; noul: number } | undefined;
+    supera_umbral_diario_100?: { type: "noul"; noul: number } | undefined;
+    es_compra_nueva?: { type: "noul"; noul: number } | undefined;
+    es_duplicada?: { type: "noul"; noul: number } | undefined;
+    requiere_completar_datos?: { type: "noul"; noul: number } | undefined;
+    variacion_recurrente_excede_20?: { type: "noul"; noul: number } | undefined;
   };
   usage?: {
     input_tokens: number;
     cost_usd: number;
     credits_remaining_usd: number;
-  };
+  } | undefined;
 };
 
 export type JevDecisionEvaluation = {
@@ -90,9 +118,10 @@ export type JevDecisionEvaluation = {
   evaluator: "jev-typesafe-api" | "jev-rules-engine";
   rules: RuleResult[];
   rawState: string;
-  rawQuestions: Record<string, unknown>;
+  rawQuestions: JevQuestionsSchema;
   answers?: JevApiResponse["answers"] | undefined;
 };
+
 
 /**
  * Genera el estado en texto plano para JEV TypeSafe.
@@ -117,7 +146,7 @@ export function buildJevState(input: JevDecisionInput): string {
 /**
  * Genera el esquema de preguntas tipadas para JEV TypeSafe.
  */
-export function buildJevQuestions() {
+export function buildJevQuestions(): JevQuestionsSchema {
   return {
     action: {
       type: "choice",

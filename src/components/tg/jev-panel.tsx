@@ -156,7 +156,7 @@ export function JevPanel() {
     setEvaluating(true);
     try {
       // Intentar vía server function (que usa JEV_API_KEY desde .env.local de forma segura)
-      const res = await evaluateJevDecisionFn({ data: inputToRun });
+      const res = (await evaluateJevDecisionFn({ data: inputToRun })) as JevDecisionEvaluation;
       setResult(res);
     } catch {
       // Fallback local instantáneo si el servidor no está corriendo
@@ -166,6 +166,7 @@ export function JevPanel() {
       setEvaluating(false);
     }
   };
+
 
   const selectPreset = (index: number) => {
     setActivePresetIndex(index);
@@ -284,10 +285,14 @@ export function JevPanel() {
                 checked={Boolean(form.isDuplicate)}
                 onCheckedChange={(c) => {
                   setActivePresetIndex(null);
-                  setForm({
-                    ...form,
-                    isDuplicate: c,
-                    duplicateDetails: c ? "Factura e importe ya registrados previamente" : undefined,
+                  setForm((prev) => {
+                    const next: JevDecisionInput = { ...prev, isDuplicate: c };
+                    if (c) {
+                      next.duplicateDetails = "Factura e importe ya registrados previamente";
+                    } else {
+                      delete next.duplicateDetails;
+                    }
+                    return next;
                   });
                 }}
               />
@@ -302,10 +307,10 @@ export function JevPanel() {
                 checked={Boolean(form.missingFields && form.missingFields.length > 0)}
                 onCheckedChange={(c) => {
                   setActivePresetIndex(null);
-                  setForm({
-                    ...form,
+                  setForm((prev) => ({
+                    ...prev,
                     missingFields: c ? ["NIT / Identificación fiscal"] : [],
-                  });
+                  }));
                 }}
               />
             </div>
@@ -319,11 +324,16 @@ export function JevPanel() {
                 checked={Boolean(form.isRecurring && (form.recurringVariationPct ?? 0) > 20)}
                 onCheckedChange={(c) => {
                   setActivePresetIndex(null);
-                  setForm({
-                    ...form,
-                    isRecurring: c,
-                    recurringAverageUsd: c ? 100 : undefined,
-                    recurringVariationPct: c ? 25 : undefined,
+                  setForm((prev) => {
+                    const next: JevDecisionInput = { ...prev, isRecurring: c };
+                    if (c) {
+                      next.recurringAverageUsd = 100;
+                      next.recurringVariationPct = 25;
+                    } else {
+                      delete next.recurringAverageUsd;
+                      delete next.recurringVariationPct;
+                    }
+                    return next;
                   });
                 }}
               />
@@ -338,15 +348,20 @@ export function JevPanel() {
                 checked={Boolean(form.hasContradictions)}
                 onCheckedChange={(c) => {
                   setActivePresetIndex(null);
-                  setForm({
-                    ...form,
-                    hasContradictions: c,
-                    contradictionDetails: c ? "Discrepancia fiscal material" : undefined,
+                  setForm((prev) => {
+                    const next: JevDecisionInput = { ...prev, hasContradictions: c };
+                    if (c) {
+                      next.contradictionDetails = "Discrepancia fiscal material";
+                    } else {
+                      delete next.contradictionDetails;
+                    }
+                    return next;
                   });
                 }}
               />
             </div>
           </div>
+
 
           <Button
             type="button"
