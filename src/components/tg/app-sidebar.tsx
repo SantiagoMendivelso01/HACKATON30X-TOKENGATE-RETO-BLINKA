@@ -10,13 +10,10 @@ import {
   ScrollText,
   ShieldCheck,
   Settings,
-  ChevronsUpDown,
   Building2,
   FlaskConical,
   LogOut,
   Bell,
-  Swords,
-  Check,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,11 +33,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ORGS, ORG_IDS } from "@/lib/tokengate/mock-data";
 import { useTokenGate } from "@/lib/tokengate/store";
 import { needsAttention } from "@/lib/tokengate/status";
 import { Logo, Wordmark } from "./logo";
@@ -71,7 +66,6 @@ export const navGroups: { label: string; items: Item[] }[] = [
     items: [
       { title: "Registro de decisiones", url: "/app/decisiones", icon: ScrollText },
       { title: "Auditoría", url: "/app/auditoria", icon: ShieldCheck },
-      { title: "Red team", url: "/app/red-team", icon: Swords },
     ],
   },
   { label: "Configuración", items: [{ title: "Ajustes", url: "/app/ajustes", icon: Settings }] },
@@ -81,7 +75,7 @@ export function AppSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed" && !isMobile;
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const { all, alerts, seed, org, switchOrg } = useTokenGate();
+  const { all, alerts, seed } = useTokenGate();
   const attention = all.filter((e) => needsAttention(e.status)).length;
   const critical = alerts.filter((a) => a.severity === "critical").length;
   const isActive = (url: string) =>
@@ -97,39 +91,21 @@ export function AppSidebar() {
         >
           {collapsed ? <Logo /> : <Wordmark />}
         </Link>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              className="h-11 rounded-xl border border-sidebar-border bg-card"
-              tooltip={seed.name}
-            >
-              <Building2 className="h-4 w-4" />
-              <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
-                <span className="truncate text-sm font-medium text-foreground">{seed.name}</span>
-                <span className="truncate text-[11px] text-muted-foreground">
-                  {seed.jurisdiction} · {seed.period}
-                </span>
+        <SidebarMenuButton
+          asChild
+          className="h-11 rounded-xl border border-sidebar-border bg-card"
+          tooltip={seed.name}
+        >
+          <div>
+            <Building2 className="h-4 w-4" />
+            <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
+              <span className="truncate text-sm font-medium text-foreground">{seed.name}</span>
+              <span className="truncate text-[11px] text-muted-foreground">
+                {seed.jurisdiction} · {seed.period}
               </span>
-              <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-64">
-            <DropdownMenuLabel>Organizaciones de demo</DropdownMenuLabel>
-            {ORG_IDS.map((id) => (
-              <DropdownMenuItem key={id} onSelect={() => switchOrg(id)}>
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate">{ORGS[id].name}</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {id === "andes"
-                      ? "Set de prueba LatAm · 5 monedas"
-                      : "Datos originales de la rama UX"}
-                  </span>
-                </span>
-                {id === org && <Check className="h-4 w-4" />}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </span>
+          </div>
+        </SidebarMenuButton>
       </SidebarHeader>
 
       <SidebarContent>
@@ -179,7 +155,7 @@ export function AppSidebar() {
       <SidebarFooter className="gap-2 p-3">
         {!collapsed && (
           <div className="flex items-center gap-2 rounded-xl border border-dashed border-sidebar-border px-2 py-1.5 text-xs text-muted-foreground">
-            <FlaskConical className="h-3.5 w-3.5" /> Datos simulados · sandbox
+            <FlaskConical className="h-3.5 w-3.5" /> Pagos en sandbox
           </div>
         )}
         <DropdownMenu>
@@ -207,7 +183,7 @@ export function AppSidebar() {
             <DropdownMenuItem asChild>
               <Link to="/">
                 <LogOut className="h-4 w-4" />
-                Salir de la demo
+                Cerrar sesión
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>

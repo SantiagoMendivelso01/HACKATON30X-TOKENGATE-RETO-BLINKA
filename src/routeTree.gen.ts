@@ -23,7 +23,6 @@ import { Route as AppDecisionesRouteImport } from './routes/app.decisiones'
 import { Route as AppFacturasRouteImport } from './routes/app.facturas'
 import { Route as AppPoliticasRouteImport } from './routes/app.politicas'
 import { Route as AppPresupuestosRouteImport } from './routes/app.presupuestos'
-import { Route as AppRedTeamRouteImport } from './routes/app.red-team'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -95,11 +94,6 @@ const AppPresupuestosRoute = AppPresupuestosRouteImport.update({
   path: '/presupuestos',
   getParentRoute: () => AppRoute,
 } as any)
-const AppRedTeamRoute = AppRedTeamRouteImport.update({
-  id: '/red-team',
-  path: '/red-team',
-  getParentRoute: () => AppRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -115,7 +109,6 @@ export interface FileRoutesByFullPath {
   '/app/facturas': typeof AppFacturasRoute
   '/app/politicas': typeof AppPoliticasRoute
   '/app/presupuestos': typeof AppPresupuestosRoute
-  '/app/red-team': typeof AppRedTeamRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
@@ -131,7 +124,6 @@ export interface FileRoutesByTo {
   '/app/facturas': typeof AppFacturasRoute
   '/app/politicas': typeof AppPoliticasRoute
   '/app/presupuestos': typeof AppPresupuestosRoute
-  '/app/red-team': typeof AppRedTeamRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -149,7 +141,6 @@ export interface FileRoutesById {
   '/app/facturas': typeof AppFacturasRoute
   '/app/politicas': typeof AppPoliticasRoute
   '/app/presupuestos': typeof AppPresupuestosRoute
-  '/app/red-team': typeof AppRedTeamRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -168,7 +159,6 @@ export interface FileRouteTypes {
     | '/app/facturas'
     | '/app/politicas'
     | '/app/presupuestos'
-    | '/app/red-team'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -184,7 +174,6 @@ export interface FileRouteTypes {
     | '/app/facturas'
     | '/app/politicas'
     | '/app/presupuestos'
-    | '/app/red-team'
     | '/app'
   id:
     | '__root__'
@@ -201,7 +190,6 @@ export interface FileRouteTypes {
     | '/app/facturas'
     | '/app/politicas'
     | '/app/presupuestos'
-    | '/app/red-team'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
@@ -311,13 +299,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPresupuestosRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/red-team': {
-      id: '/app/red-team'
-      path: '/red-team'
-      fullPath: '/app/red-team'
-      preLoaderRoute: typeof AppRedTeamRouteImport
-      parentRoute: typeof AppRoute
-    }
   }
 }
 
@@ -332,7 +313,6 @@ interface AppRouteChildren {
   AppFacturasRoute: typeof AppFacturasRoute
   AppPoliticasRoute: typeof AppPoliticasRoute
   AppPresupuestosRoute: typeof AppPresupuestosRoute
-  AppRedTeamRoute: typeof AppRedTeamRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -347,7 +327,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppFacturasRoute: AppFacturasRoute,
   AppPoliticasRoute: AppPoliticasRoute,
   AppPresupuestosRoute: AppPresupuestosRoute,
-  AppRedTeamRoute: AppRedTeamRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

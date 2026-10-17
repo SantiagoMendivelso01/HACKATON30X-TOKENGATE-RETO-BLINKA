@@ -36,7 +36,7 @@ import { INJECTION_PATTERNS } from "@/lib/tokengate/decision-engine";
 import { formatBase, formatDate, formatDateTime, formatMoney } from "@/lib/tokengate/format";
 import { statusMeta, toneClasses } from "@/lib/tokengate/status";
 import type { HumanAction } from "@/lib/tokengate/types";
-import { AttackTag, Money, NoMoneyNotice, RuleBadge, StatusBadge, channelText } from "./primitives";
+import { Money, NoMoneyNotice, RuleBadge, StatusBadge, channelText } from "./primitives";
 
 const confirmCopy: Record<
   HumanAction,
@@ -61,13 +61,6 @@ const confirmCopy: Record<
     toast: "Solicitud de información enviada (simulada).",
   },
 };
-
-const outcomeLabel = {
-  authorized: "Autorizar",
-  blocked: "Bloquear",
-  requires_approval: "Escalar a aprobación",
-  needs_information: "Pedir información",
-} as const;
 
 function highlight(raw: string) {
   const marks: [number, number][] = [];
@@ -160,17 +153,6 @@ export function DecisionDetail({ subjectId }: { subjectId: string }) {
           Política {result.policyVersion} · motor de reglas determinista · el modelo solo extrae
           datos
         </p>
-        {s.expected && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Set de prueba: se esperaba <b>{outcomeLabel[s.expected]}</b>{" "}
-            {s.expected === result.outcome ? "✓" : "✗"}
-          </p>
-        )}
-        {s.attack && (
-          <p className="mt-2 flex items-center gap-2 text-xs">
-            <AttackTag technique={s.attack} /> {s.attack}
-          </p>
-        )}
       </section>
 
       {flagged.length > 0 && (

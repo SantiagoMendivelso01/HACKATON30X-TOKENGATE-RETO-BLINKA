@@ -66,7 +66,7 @@ function HeaderPills() {
   return (
     <span className="hidden items-center gap-2 sm:flex">
       <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
-        <FlaskConical className="h-3.5 w-3.5" /> Datos simulados
+        <FlaskConical className="h-3.5 w-3.5" /> Pagos en sandbox
       </span>
       <span className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
         Política <b className="font-mono font-medium text-foreground">{policy.version}</b>

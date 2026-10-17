@@ -60,7 +60,8 @@ Cambiar la política vuelve a correr el ledger completo. Así funciona la simula
 
 ## Estado y auditoría (`store.tsx`)
 
-- Estado en memoria con `useReducer`. Hay dos organizaciones de demo y cada una tiene su propio estado.
+- Estado en memoria con `useReducer`. Arranca vacío (sin facturas, compras ni auditoría) y se pierde al recargar hasta que haya persistencia.
+- La organización, su usuario, agentes, proveedores, tabla de cambio y política inicial viven en `org.ts`. Hoy son valores por defecto; las integraciones reales los reemplazan.
 - El store expone el ledger, las listas evaluadas, las alertas y el **registro de auditoría**: eventos humanos y del sistema, más cada decisión del agente y cada pago, en orden cronológico y encadenados con `hash.ts`. `verifyChain` detecta cualquier evento editado.
 
 ## Cómo extender
@@ -69,12 +70,7 @@ Cambiar la política vuelve a correr el ledger completo. Así funciona la simula
 
 1. Añade el id a `RuleId` en `types.ts`.
 2. Agrega la evaluación en `evaluateDecision`, con `explanation`, `rule`, `ifChanged` y `alert` si corresponde.
-3. Escribe un test en `decision-engine.test.ts`. Si la regla cambia decisiones del set de Andes, actualiza `expected` con criterio.
-
-**Agregar una organización de demo**
-
-1. Crea `src/lib/tokengate/orgs/<id>.ts` exportando un `OrgSeed`.
-2. Regístrala en `mock-data.ts` (`ORGS`, `ORG_IDS`) y en el tipo `OrgId`.
+3. Escribe un test en `decision-engine.test.ts`.
 
 **Agregar una pantalla**
 

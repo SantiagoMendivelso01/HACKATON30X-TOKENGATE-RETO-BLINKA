@@ -1,7 +1,7 @@
-// In-memory demo store (React context). Resets on reload. Two demo organizations can be switched.
+// In-memory store (React context). Starts empty and resets on reload until persistence lands.
 import { createContext, useContext, useMemo, useReducer, type ReactNode } from "react";
 import { runLedger, type Ledger, type LedgerState } from "./decision-engine";
-import { DEFAULT_ORG, ORGS } from "./mock-data";
+import { ORG } from "./org";
 import { displayStatus, needsAttention } from "./status";
 import { chain, verifyChain, type ChainedEvent } from "./hash";
 import { formatBase, formatMoney } from "./format";
@@ -16,7 +16,6 @@ import type {
   HumanAction,
   HumanReview,
   Invoice,
-  OrgId,
   OrgSeed,
   Policy,
   Purchase,
@@ -29,14 +28,11 @@ type OrgState = {
   reviews: Record<string, HumanReview>;
   humanLog: DecisionRecord[];
   audit: AuditEvent[];
-  incomingCount: number;
-  attackCount: number;
 };
 
-type State = { org: OrgId; orgs: Record<OrgId, OrgState>; clock: number; tamper: boolean };
+type State = OrgState & { clock: number };
 
 type Action =
-  | { type: "switchOrg"; org: OrgId }
   | {
       type: "review";
       subjectId: string;
@@ -46,30 +42,16 @@ type Action =
     }
   | { type: "savePolicy"; policy: Policy; summary: string }
   | { type: "addInvoice"; invoice: Invoice }
-  | { type: "receive" }
-  | { type: "attack" }
-  | { type: "clearAttacks" }
-  | { type: "tamper" }
   | { type: "audit"; event: Omit<AuditEvent, "id" | "at"> };
 
-const START = Date.parse("2026-10-17T12:00:00Z");
-
-const initOrg = (seed: OrgSeed): OrgState => ({
-  invoices: seed.invoices,
-  purchases: seed.purchases,
-  policy: seed.policy,
+const initialState = (): State => ({
+  invoices: [],
+  purchases: [],
+  policy: ORG.policy,
   reviews: {},
   humanLog: [],
-  audit: seed.audit,
-  incomingCount: 0,
-  attackCount: 0,
-});
-
-const initialState = (): State => ({
-  org: DEFAULT_ORG,
-  orgs: { andes: initOrg(ORGS.andes), acme: initOrg(ORGS.acme) },
-  clock: START,
-  tamper: false,
+  audit: [],
+  clock: Date.now(),
 });
 
 const actionLabel: Record<HumanAction, string> = {
@@ -79,16 +61,12 @@ const actionLabel: Record<HumanAction, string> = {
 };
 
 function reducer(state: State, a: Action): State {
-  const clock = state.clock + 60_000;
+  // Never go back in time, even if two actions land in the same millisecond.
+  const clock = Math.max(Date.now(), state.clock + 1);
   const at = new Date(clock).toISOString();
-  const seed = ORGS[state.org];
-  const o = state.orgs[state.org];
-  const user = seed.user.name;
-  const put = (next: Partial<OrgState>): State => ({
-    ...state,
-    clock,
-    orgs: { ...state.orgs, [state.org]: { ...o, ...next } },
-  });
+  const o = state;
+  const user = ORG.user.name;
+  const put = (next: Partial<OrgState>): State => ({ ...state, ...next, clock });
   const event = (e: Omit<AuditEvent, "id" | "at">, offset = 0): AuditEvent => ({
     ...e,
     id: `au-${clock}-${offset}`,
@@ -96,8 +74,6 @@ function reducer(state: State, a: Action): State {
   });
 
   switch (a.type) {
-    case "switchOrg":
-      return { ...state, org: a.org };
     case "review": {
       const subject = [...o.invoices, ...o.purchases].find((s) => s.id === a.subjectId);
       const ref = subject?.reference ?? a.subjectId;
@@ -161,60 +137,6 @@ function reducer(state: State, a: Action): State {
           ...o.audit,
         ],
       });
-    case "receive": {
-      const tpl = seed.incoming[o.incomingCount % seed.incoming.length];
-      if (!tpl) return state;
-      const n = o.incomingCount + 1;
-      const inv: Invoice = {
-        ...tpl,
-        id: `${state.org}-in-${n}`,
-        reference: `${state.org === "andes" ? "AL" : "INV"}-2026-${2000 + n}`,
-        receivedAt: at,
-        issueDate: at,
-      };
-      return put({
-        incomingCount: n,
-        invoices: [...o.invoices, inv],
-        audit: [
-          event({
-            type: "invoice_upload",
-            actor: "Buzón de facturas",
-            actorKind: "system",
-            summary: `Correo recibido en ${seed.inbox}: ${inv.reference}`,
-            reason: `${inv.supplier} · ${formatMoney(inv.amount)}`,
-            subjectId: inv.id,
-          }),
-          ...o.audit,
-        ],
-      });
-    }
-    case "attack": {
-      const traps: Invoice[] = seed.attacks.map((t, i) => ({
-        ...t,
-        id: `${state.org}-atk-${o.attackCount + i + 1}`,
-        reference: `ATK-${String(o.attackCount + i + 1).padStart(3, "0")}`,
-        receivedAt: new Date(clock + i * 1000).toISOString(),
-        issueDate: at,
-      }));
-      return put({
-        attackCount: o.attackCount + traps.length,
-        invoices: [...o.invoices, ...traps],
-        audit: [
-          event({
-            type: "attack",
-            actor: "Agente atacante",
-            actorKind: "system",
-            summary: `Red team: ${traps.length} facturas trampa enviadas al agente`,
-            reason: [...new Set(traps.map((t) => t.attack))].join(" · "),
-          }),
-          ...o.audit,
-        ],
-      });
-    }
-    case "clearAttacks":
-      return put({ invoices: o.invoices.filter((i) => !i.attack) });
-    case "tamper":
-      return { ...state, tamper: !state.tamper };
     case "audit":
       return put({ audit: [event(a.event), ...o.audit] });
   }
@@ -270,8 +192,8 @@ function useStoreValue() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
 
   return useMemo(() => {
-    const seed = ORGS[state.org];
-    const o = state.orgs[state.org];
+    const seed = ORG;
+    const o = state;
     const ledger = ledgerFor(seed, o);
 
     const evaluated: EvaluatedSubject[] = ledger.entries.map((e) => ({
@@ -369,16 +291,10 @@ function useStoreValue() {
       }),
     ].sort((a, b) => a.at.localeCompare(b.at));
     const trail = chain(raw);
-    if (state.tamper && trail.length > 6)
-      trail[6] = {
-        ...trail[6]!,
-        summary: trail[6]!.summary.replace(/\d/, "9") + " (editado a mano)",
-      };
     const brokenAt = verifyChain(trail);
 
     return {
       ...o,
-      org: state.org,
       seed,
       ledger,
       evaluatedInvoices,
@@ -389,7 +305,6 @@ function useStoreValue() {
       alerts,
       trail: trail as TrailEvent[],
       brokenAt,
-      tampered: state.tamper,
       agentName,
       now: new Date(now).toISOString(),
       /** Re-runs the whole period with another policy (used by natural-language rules). */
@@ -403,7 +318,6 @@ function useStoreValue() {
           }))
           .filter((d) => d.before !== d.after);
       },
-      switchOrg: (org: OrgId) => dispatch({ type: "switchOrg", org }),
       review: (subjectId: string, action: HumanAction, note?: string) => {
         const e = byId.get(subjectId);
         if (e) dispatch({ type: "review", subjectId, action, note, result: e.result });
@@ -411,10 +325,6 @@ function useStoreValue() {
       savePolicy: (policy: Policy, summary: string) =>
         dispatch({ type: "savePolicy", policy, summary }),
       addInvoice: (invoice: Invoice) => dispatch({ type: "addInvoice", invoice }),
-      receiveInvoice: () => dispatch({ type: "receive" }),
-      launchAttack: () => dispatch({ type: "attack" }),
-      clearAttacks: () => dispatch({ type: "clearAttacks" }),
-      toggleTamper: () => dispatch({ type: "tamper" }),
       logEvent: (event: Omit<AuditEvent, "id" | "at">) => dispatch({ type: "audit", event }),
     };
   }, [state]);
@@ -436,8 +346,5 @@ export function useTokenGate() {
   return v;
 }
 
-/** Agent name across every demo organization (agent ids are unique). */
-export const agentName = (id: string) =>
-  Object.values(ORGS)
-    .flatMap((o) => o.agents)
-    .find((a) => a.id === id)?.name ?? id;
+/** Agent name for components outside the provider. */
+export const agentName = (id: string) => ORG.agents.find((a) => a.id === id)?.name ?? id;

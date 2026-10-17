@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { CheckCheck } from "lucide-react";
 import { DecisionDetail, DecisionSheet } from "@/components/tg/decision-detail";
-import { EmptyState, PageHeader, Panel, SimBadge, StatusBadge } from "@/components/tg/primitives";
+import { EmptyState, PageHeader, Panel, StatusBadge } from "@/components/tg/primitives";
 import { agentName, useTokenGate } from "@/lib/tokengate/store";
 import { formatMoney } from "@/lib/tokengate/format";
 import { needsAttention } from "@/lib/tokengate/status";
@@ -48,11 +48,7 @@ function Aprobaciones() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
           <Panel
             className="min-w-0"
-            title={
-              <span className="flex items-center gap-2">
-                {queue.length} pendientes <SimBadge />
-              </span>
-            }
+            title={<span className="flex items-center gap-2">{queue.length} pendientes</span>}
             bodyClassName="p-0"
           >
             <ul className="divide-y divide-border" role="listbox" aria-label="Cola de aprobación">

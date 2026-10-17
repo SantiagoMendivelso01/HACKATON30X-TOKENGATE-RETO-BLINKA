@@ -24,7 +24,7 @@ export const Route = createFileRoute("/app/ajustes")({
       { title: "Ajustes — blinka" },
       {
         name: "description",
-        content: "Organización, moneda, tema, notificaciones y entorno de demostración.",
+        content: "Organización, moneda, tema, notificaciones y datos.",
       },
       { property: "og:title", content: "Ajustes — blinka" },
       { property: "og:description", content: "Configura el agente pagador para tu organización." },
@@ -39,7 +39,7 @@ function Ajustes() {
   const CURRENT_USER = seed.user.name;
   const [theme, setTheme] = useThemeState();
   const [org, setOrg] = useState(ORG_NAME);
-  const [currency, setCurrency] = useState("COP");
+  const [currency, setCurrency] = useState("USD");
   const [orgError, setOrgError] = useState("");
   const [notif, setNotif] = useState({ approvals: true, blocked: true, weekly: false });
 
@@ -63,7 +63,7 @@ function Ajustes() {
     <>
       <PageHeader
         title="Ajustes"
-        subtitle="Preferencias de la organización y del entorno de demostración."
+        subtitle="Preferencias de la organización y de sus datos."
         actions={
           <Button className="h-10" onClick={save}>
             <Save className="h-4 w-4" />
@@ -142,14 +142,14 @@ function Ajustes() {
             </label>
           ))}
         </Panel>
-        <Panel title="Entorno de demostración">
+        <Panel title="Datos">
           <p className="text-sm text-muted-foreground">
-            Todos los datos son simulados y se guardan solo en memoria. El agente pagador no está
-            conectado a bancos: los pagos van a un sandbox simulado.
+            Por ahora los datos se guardan solo en memoria y se pierden al recargar. El agente
+            pagador no está conectado a bancos: los pagos van a un sandbox.
           </p>
           <Button variant="outline" className="mt-4 h-10" onClick={() => window.location.reload()}>
             <RotateCcw className="h-4 w-4" />
-            Restablecer datos de demostración
+            Vaciar datos
           </Button>
         </Panel>
       </div>

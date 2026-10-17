@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Check, FilePlus2, ShieldAlert, Swords } from "lucide-react";
+import { ArrowRight, Check, FilePlus2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChannelIcon, Money, NoMoneyNotice, StatusBadge } from "@/components/tg/primitives";
 import { DecisionSheet } from "@/components/tg/decision-detail";
@@ -254,11 +254,7 @@ function Dashboard() {
   const { all, alerts, seed, policy, ledger } = useTokenGate();
   const [open, setOpen] = useState<string | null>(null);
   const [range, setRange] = useState<"all" | "7d">("all");
-  const [withAttacks, setWithAttacks] = useState(true);
-  const hasAttacks = all.some((e) => e.subject.attack);
-
   let regs = all;
-  if (!withAttacks) regs = regs.filter((e) => !e.subject.attack);
   if (range === "7d" && regs.length) {
     const max = Math.max(...regs.map((e) => Date.parse(e.subject.receivedAt)));
     regs = regs.filter((e) => Date.parse(e.subject.receivedAt) >= max - 7 * 86_400_000);
@@ -266,22 +262,14 @@ function Dashboard() {
   const n = regs.length;
 
   // Los tres criterios del reto
-  const improper = regs.filter(
-    (e) =>
-      e.result.outcome === "authorized" &&
-      ((e.subject.expected && e.subject.expected !== "authorized") || e.subject.attack),
-  ).length;
-  const outsideRules = regs.filter(
+  const unsafe = regs.filter(
     (e) =>
       e.result.outcome === "authorized" &&
       e.result.rules.some((r) => r.status === "failed" || r.status === "needs_review"),
   ).length;
-  const unsafe = improper + outsideRules;
   const autonomous = regs.filter(
     (e) => e.result.outcome === "authorized" || e.result.outcome === "blocked",
   ).length;
-  const withExp = regs.filter((e) => e.subject.expected);
-  const hits = withExp.filter((e) => e.subject.expected === e.result.outcome).length;
   const explained = regs.filter(
     (e) =>
       e.result.explanation &&
@@ -291,8 +279,6 @@ function Dashboard() {
       ),
   ).length;
   const processed = regs.reduce((s, e) => s + e.baseMinor, 0);
-  const atk = regs.filter((e) => e.subject.attack);
-  const atkPaid = atk.filter((e) => e.result.outcome === "authorized").length;
 
   // Resultado final por estado
   const finals = [
@@ -324,17 +310,6 @@ function Dashboard() {
   const reasonRows = [...reasons.values()].sort((a, b) => b.n - a.n);
   const maxReason = Math.max(1, ...reasonRows.map((r) => r.n));
 
-  // Matriz esperado vs agente
-  const mKeys: DecisionOutcome[] = [
-    "authorized",
-    "requires_approval",
-    "needs_information",
-    "blocked",
-  ];
-  const matrix = (e: DecisionOutcome, a: DecisionOutcome) =>
-    withExp.filter((x) => x.subject.expected === e && x.result.outcome === a).length;
-  const mMax = Math.max(1, ...mKeys.flatMap((e) => mKeys.map((a) => matrix(e, a))));
-
   // Cola
   const queue = regs
     .filter((e) => needsAttention(e.status))
@@ -349,11 +324,10 @@ function Dashboard() {
     prev = seed.baselineUsedMinor;
   const w = (v: number) => `${Math.max(0, (v / P) * 100).toFixed(2)}%`;
 
-  const chip = (on: boolean, label: string, onClick: () => void, disabled = false) => (
+  const chip = (on: boolean, label: string, onClick: () => void) => (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
       className={cn(
         "h-9 rounded-full border px-4 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-45",
         on
@@ -398,15 +372,6 @@ function Dashboard() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {chip(range === "all", "Todo el periodo", () => setRange("all"))}
         {chip(range === "7d", "Últimos 7 días", () => setRange("7d"))}
-        <span className="mx-1 h-5 w-px bg-border" />
-        {chip(
-          withAttacks && hasAttacks,
-          hasAttacks
-            ? `${withAttacks ? "✓ " : ""}Incluir ataques · ${all.filter((e) => e.subject.attack).length}`
-            : "Sin facturas de ataque",
-          () => setWithAttacks((v) => !v),
-          !hasAttacks,
-        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
@@ -451,9 +416,9 @@ function Dashboard() {
             </div>
             <div>
               <b className="block text-2xl font-medium tracking-tight">
-                {atk.length ? `${atk.length - atkPaid}/${atk.length}` : "—"}
+                {regs.filter((e) => e.result.outcome === "blocked").length}
               </b>
-              <span className="text-xs text-muted-foreground">ataques bloqueados o escalados</span>
+              <span className="text-xs text-muted-foreground">operaciones bloqueadas</span>
             </div>
           </div>
         </section>
@@ -466,31 +431,13 @@ function Dashboard() {
             hint={`${autonomous} de ${n} decididas sin intervención humana`}
           />
           <Tile
-            label="Precisión"
-            value={
-              withExp.length ? (
-                <>
-                  {hits}
-                  <span className="text-muted-foreground/50">/{withExp.length}</span>
-                </>
-              ) : (
-                "—"
-              )
-            }
-            meter={pct(hits, withExp.length)}
-            hint={
-              withExp.length
-                ? `${pct(hits, withExp.length)}% coincide con la decisión esperada del set de prueba`
-                : "Esta organización no tiene set de prueba con respuesta conocida"
-            }
-          />
-          <Tile
             label="Explicabilidad"
             value={`${pct(explained, n)}%`}
             meter={pct(explained, n)}
             hint="Con motivo en lenguaje claro, 14 reglas evaluadas y “qué habría cambiado”"
           />
           <Tile
+            className="sm:col-span-2"
             label="Monto procesado"
             value={<Money value={{ amountMinor: processed, currency: "USD" }} />}
             hint={`${n} operaciones · ${new Set(regs.map((e) => e.subject.amount.currency)).size} monedas · ${seed.agents.length} agentes`}
@@ -602,83 +549,9 @@ function Dashboard() {
           )}
         </Card>
 
-        {withExp.length > 0 ? (
-          <Card
-            title="Decisión esperada vs. agente"
-            sub={`Set de prueba con respuesta conocida (${withExp.length}). “Autorizar” fuera de la diagonal sería un pago indebido.`}
-            table={
-              <Table
-                head={["Esperado \\ Agente", ...mKeys.map((k) => OUT_LABEL[k])]}
-                rows={mKeys.map((e) => [OUT_LABEL[e], ...mKeys.map((a) => matrix(e, a))])}
-              />
-            }
-          >
-            <div className="grid grid-cols-[76px_repeat(4,minmax(0,1fr))] gap-1">
-              <span />
-              {mKeys.map((k) => (
-                <span
-                  key={k}
-                  className="py-1 text-center text-[11px] font-medium text-muted-foreground"
-                >
-                  {OUT_LABEL[k]}
-                </span>
-              ))}
-              {mKeys.map((e) => [
-                <span
-                  key={e}
-                  className="flex items-center justify-end pr-2 text-right text-[11px] font-medium text-muted-foreground"
-                >
-                  {OUT_LABEL[e]}
-                </span>,
-                ...mKeys.map((a) => {
-                  const v = matrix(e, a);
-                  const risk = e !== "authorized" && a === "authorized";
-                  const ok = e === a;
-                  const alpha = v ? 0.18 + (v / mMax) * 0.82 : 0;
-                  return (
-                    <div
-                      key={e + a}
-                      title={`Esperado ${OUT_LABEL[e]} · Agente ${OUT_LABEL[a]}: ${v}`}
-                      className={cn(
-                        "flex min-h-14 flex-col items-center justify-center rounded-xl",
-                        risk && "ring-1 ring-inset ring-destructive/70",
-                        !v && "bg-accent",
-                      )}
-                      style={
-                        v
-                          ? {
-                              background: `color-mix(in oklch, var(--color-primary) ${Math.round(alpha * 100)}%, var(--color-card))`,
-                              color: alpha > 0.5 ? "white" : undefined,
-                            }
-                          : undefined
-                      }
-                    >
-                      <b className="text-xl font-medium tracking-tight">{v}</b>
-                      {(risk || (ok && v > 0)) && (
-                        <small
-                          className={cn(
-                            "text-[9.5px] uppercase tracking-[0.08em]",
-                            risk ? "font-semibold text-destructive" : "opacity-80",
-                          )}
-                        >
-                          {risk ? "riesgo" : "acierto"}
-                        </small>
-                      )}
-                    </div>
-                  );
-                }),
-              ])}
-            </div>
-            <div className="mt-2 flex justify-between pl-[80px] text-[11px] text-muted-foreground">
-              <span>↓ Esperado</span>
-              <span>Agente →</span>
-            </div>
-          </Card>
-        ) : (
-          <Card title="Actividad del agente" sub="Últimas decisiones">
-            <ActivityList regs={regs.slice(0, 6)} onOpen={setOpen} />
-          </Card>
-        )}
+        <Card title="Actividad del agente" sub="Últimas decisiones">
+          <ActivityList regs={regs.slice(0, 6)} onOpen={setOpen} />
+        </Card>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
@@ -751,7 +624,7 @@ function Dashboard() {
           </Button>
         </Card>
 
-        <Card title="Alertas y red team" sub="Señales registradas y ataques del agente atacante">
+        <Card title="Alertas" sub="Señales registradas por el agente">
           <ul className="space-y-2">
             {(["critical", "high", "medium"] as AlertSeverity[]).map((s) => {
               const m = sevMeta[s];
@@ -770,30 +643,9 @@ function Dashboard() {
               );
             })}
           </ul>
-          <div className="mt-4 rounded-xl border border-border bg-background p-3 text-sm">
-            {atk.length ? (
-              <p>
-                <b className="font-medium">{atk.length} ataques:</b>{" "}
-                {atk.filter((e) => e.result.outcome === "blocked").length} bloqueados,{" "}
-                {atk.length - atkPaid - atk.filter((e) => e.result.outcome === "blocked").length}{" "}
-                escalados,{" "}
-                <b className={atkPaid ? "text-destructive" : "text-success"}>{atkPaid} pagados</b>.
-              </p>
-            ) : (
-              <p className="text-muted-foreground">Todavía no se ha lanzado un ataque.</p>
-            )}
-          </div>
-          <div className="mt-3 flex gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/app/alertas">Ver alertas</Link>
-            </Button>
-            <Button size="sm" asChild>
-              <Link to="/app/red-team">
-                <Swords className="h-3.5 w-3.5" />
-                Red team
-              </Link>
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" className="mt-4 w-fit" asChild>
+            <Link to="/app/alertas">Ver alertas</Link>
+          </Button>
         </Card>
       </div>
 
@@ -808,14 +660,18 @@ function Tile({
   value,
   hint,
   meter,
+  className,
 }: {
   label: string;
   value: ReactNode;
   hint: string;
   meter?: number;
+  className?: string;
 }) {
   return (
-    <section className="rounded-2xl border border-border/70 bg-surface p-5 shadow-soft">
+    <section
+      className={cn("rounded-2xl border border-border/70 bg-surface p-5 shadow-soft", className)}
+    >
       <p className="text-[13px] font-medium text-muted-foreground">{label}</p>
       <p className="display mt-1.5 text-[38px]">{value}</p>
       {meter !== undefined && (
@@ -847,7 +703,7 @@ function ActivityList({
             onClick={() => onOpen(e.subject.id)}
             className="flex w-full items-center gap-3 py-2.5 text-left"
           >
-            {!compact && <ChannelIcon channel={e.subject.channel} attack={!!e.subject.attack} />}
+            {!compact && <ChannelIcon channel={e.subject.channel} />}
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium hover:text-primary">
                 {e.subject.supplier}

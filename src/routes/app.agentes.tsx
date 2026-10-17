@@ -8,7 +8,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { PageHeader, Panel, SimBadge, StatusBadge } from "@/components/tg/primitives";
+import { PageHeader, Panel, StatusBadge } from "@/components/tg/primitives";
 import { useTokenGate } from "@/lib/tokengate/store";
 import { formatBase, formatDateTime, formatMoney } from "@/lib/tokengate/format";
 import { needsAttention } from "@/lib/tokengate/status";
@@ -142,11 +142,7 @@ function Agentes() {
                   </ul>
                 </Panel>
                 <Panel
-                  title={
-                    <span className="flex items-center gap-2">
-                      Actividad reciente <SimBadge />
-                    </span>
-                  }
+                  title={<span className="flex items-center gap-2">Actividad reciente</span>}
                   bodyClassName="p-0"
                 >
                   <ul className="divide-y divide-border">

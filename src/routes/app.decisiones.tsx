@@ -16,7 +16,6 @@ import {
   PageHeader,
   Panel,
   RuleBadge,
-  SimBadge,
   StatusBadge,
 } from "@/components/tg/primitives";
 import { useTokenGate } from "@/lib/tokengate/store";
@@ -77,12 +76,8 @@ function Decisiones() {
       />
       <Panel
         bodyClassName="p-0"
-        title={
-          <span className="flex items-center gap-2">
-            {rows.length} registros <SimBadge />
-          </span>
-        }
-        description="Registro de demostración en memoria: no es inmutable ni a prueba de manipulación."
+        title={<span className="flex items-center gap-2">{rows.length} registros</span>}
+        description="Registro en memoria: no es inmutable ni a prueba de manipulación."
       >
         <div className="grid gap-2 border-b border-border p-3 sm:grid-cols-[1fr_auto_auto]">
           <div className="relative">

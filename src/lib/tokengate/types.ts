@@ -87,10 +87,6 @@ export type DecisionSubject = {
   /** Original text of the document/message, scanned for injected instructions. */
   rawText?: string | undefined;
   sender?: string | undefined;
-  /** Red-team metadata: the technique used to build this trap. */
-  attack?: string | undefined;
-  /** Known-correct decision for the test set (used to measure precision). */
-  expected?: DecisionOutcome | undefined;
 };
 
 export type Invoice = DecisionSubject & {
@@ -161,7 +157,7 @@ export type Policy = {
 };
 
 /** Units of each currency per 1 USD. */
-export type FxTable = Record<Currency, number>;
+export type FxTable = Partial<Record<Currency, number>>;
 
 export type DecisionRecord = {
   id: string;
@@ -184,8 +180,7 @@ export type AuditEvent = {
     | "invoice_upload"
     | "settings"
     | "system"
-    | "payment"
-    | "attack";
+    | "payment";
   actor: string;
   actorKind: "agent" | "human" | "system";
   summary: string;
@@ -193,11 +188,9 @@ export type AuditEvent = {
   subjectId?: string | undefined;
 };
 
-export type OrgId = "andes" | "acme";
-
-/** Everything a demo organization brings: its people, suppliers, agents, policy and seed records. */
+/** The organization the app runs for: its people, suppliers, agents and policy. */
 export type OrgSeed = {
-  id: OrgId;
+  id: string;
   name: string;
   jurisdiction: string;
   period: string;
@@ -209,11 +202,4 @@ export type OrgSeed = {
   policy: Policy;
   suppliers: Supplier[];
   agents: Agent[];
-  invoices: Invoice[];
-  purchases: Purchase[];
-  audit: AuditEvent[];
-  /** Templates for "new invoice arrives" in the demo inbox. */
-  incoming: Invoice[];
-  /** Red-team trap templates. */
-  attacks: Invoice[];
 };

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ShoppingCart } from "lucide-react";
-import { EmptyState, NoMoneyNotice, PageHeader, Panel, SimBadge } from "@/components/tg/primitives";
+import { EmptyState, NoMoneyNotice, PageHeader, Panel } from "@/components/tg/primitives";
 import { SubjectTable } from "@/components/tg/subject-table";
 import { DecisionSheet } from "@/components/tg/decision-detail";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -47,11 +47,7 @@ function Compras() {
       </Tabs>
       <Panel
         bodyClassName="p-0"
-        title={
-          <span className="flex items-center gap-2">
-            Solicitudes de compra <SimBadge />
-          </span>
-        }
+        title={<span className="flex items-center gap-2">Solicitudes de compra</span>}
         description="Abre una solicitud para revisarla, aprobarla, rechazarla o pedir información."
       >
         {rows.length ? (

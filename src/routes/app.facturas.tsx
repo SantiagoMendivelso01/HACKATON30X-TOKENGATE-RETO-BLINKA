@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { FileText, Search, Upload, AlertTriangle, ScanText, Loader2, MailPlus } from "lucide-react";
+import { FileText, Search, Upload, AlertTriangle, ScanText, Loader2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { extractInvoice } from "@/lib/tokengate/ocr.functions";
 import { toast } from "sonner";
@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { EmptyState, NoMoneyNotice, PageHeader, Panel, SimBadge } from "@/components/tg/primitives";
+import { EmptyState, NoMoneyNotice, PageHeader, Panel } from "@/components/tg/primitives";
 import { SubjectTable } from "@/components/tg/subject-table";
 import { DecisionSheet } from "@/components/tg/decision-detail";
 import { useTokenGate } from "@/lib/tokengate/store";
@@ -59,7 +59,7 @@ export const Route = createFileRoute("/app/facturas")({
 const PAGE = 8;
 
 function Facturas() {
-  const { evaluatedInvoices, byId, seed, receiveInvoice } = useTokenGate();
+  const { evaluatedInvoices, byId, seed } = useTokenGate();
   const agents = seed.agents;
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/app/facturas" });
@@ -106,35 +106,18 @@ function Facturas() {
       <PageHeader
         title="Facturas"
         subtitle="Llegan por correo, PDF, imagen o chat. El agente lee cada una y decide: autorizar, bloquear o escalar."
-        eyebrow={`Bandeja · ${seed.inbox}`}
+        eyebrow={seed.inbox ? `Bandeja · ${seed.inbox}` : "Bandeja"}
         actions={
-          <>
-            <Button
-              variant="outline"
-              className="h-10"
-              onClick={() => {
-                receiveInvoice();
-                toast.success("Correo nuevo recibido: el agente ya lo evaluó (simulado).");
-              }}
-            >
-              <MailPlus className="h-4 w-4" />
-              Simular correo entrante
-            </Button>
-            <Button className="h-10" onClick={() => navigate({ search: { upload: true } })}>
-              <Upload className="h-4 w-4" />
-              Cargar factura
-            </Button>
-          </>
+          <Button className="h-10" onClick={() => navigate({ search: { upload: true } })}>
+            <Upload className="h-4 w-4" />
+            Cargar factura
+          </Button>
         }
       />
 
       <Panel
         bodyClassName="p-0"
-        title={
-          <span className="flex items-center gap-2">
-            {rows.length} facturas <SimBadge />
-          </span>
-        }
+        title={<span className="flex items-center gap-2">{rows.length} facturas</span>}
       >
         <div className="grid gap-2 border-b border-border p-3 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto]">
           <div className="relative">
@@ -328,7 +311,7 @@ function UploadDialog({
     supplier: "",
     amount: "",
     currency: "USD" as Currency,
-    due: "2026-10-30",
+    due: new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10),
     agentId: agents[0]?.id ?? "",
     taxId: "",
     description: "",
@@ -402,7 +385,7 @@ function UploadDialog({
     const inv: Invoice = {
       id: `${seed.id}-up-${n}`,
       kind: "invoice",
-      reference: `${seed.id === "andes" ? "AL" : "INV"}-2026-${n}`,
+      reference: `INV-${now.slice(0, 4)}-${n}`,
       receivedAt: now,
       channel: "upload",
       invoiceNumber: f.number.trim() || undefined,

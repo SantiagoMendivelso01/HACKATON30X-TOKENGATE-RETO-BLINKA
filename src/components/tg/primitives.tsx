@@ -45,15 +45,6 @@ export function RuleBadge({ status }: { status: RuleStatus }) {
   );
 }
 
-export function SimBadge({ children = "Datos simulados" }: { children?: ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded border border-dashed border-border px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-      <FlaskConical className="h-3 w-3" aria-hidden />
-      {children}
-    </span>
-  );
-}
-
 export function PageHeader({
   title,
   subtitle,
@@ -198,31 +189,14 @@ const channelName: Record<Channel, string> = {
 };
 
 /** Square channel icon like Blinka transaction rows. */
-export function ChannelIcon({ channel, attack = false }: { channel: Channel; attack?: boolean }) {
+export function ChannelIcon({ channel }: { channel: Channel }) {
   return (
     <span
       title={channelName[channel]}
-      className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border font-mono text-[10px] font-medium",
-        attack
-          ? "border-transparent bg-destructive/10 text-destructive"
-          : "border-border bg-background text-muted-foreground",
-      )}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-border bg-background font-mono text-[10px] font-medium text-muted-foreground"
     >
-      {attack ? "!" : channelLabel[channel]}
+      {channelLabel[channel]}
     </span>
   );
 }
 export const channelText = (c: Channel) => channelName[c];
-
-export function AttackTag({ technique }: { technique?: string | undefined }) {
-  if (!technique) return null;
-  return (
-    <span
-      title={technique}
-      className="inline-flex items-center rounded-md bg-destructive/10 px-1.5 py-0.5 text-[11px] font-medium text-destructive"
-    >
-      ataque
-    </span>
-  );
-}

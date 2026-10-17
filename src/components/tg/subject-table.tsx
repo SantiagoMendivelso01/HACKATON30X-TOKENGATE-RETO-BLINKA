@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { agentName, type EvaluatedSubject } from "@/lib/tokengate/store";
 import { formatBase, formatDate, formatDateTime, formatMoney } from "@/lib/tokengate/format";
-import { AttackTag, ChannelIcon, Money, StatusBadge } from "./primitives";
+import { ChannelIcon, Money, StatusBadge } from "./primitives";
 
 type Col =
   "reference" | "supplier" | "agent" | "amount" | "date" | "status" | "description" | "budget";
@@ -53,10 +53,9 @@ export function SubjectTable({
       case "supplier":
         return (
           <span className="flex min-w-0 items-center gap-3">
-            <ChannelIcon channel={s.channel} attack={!!s.attack} />
+            <ChannelIcon channel={s.channel} />
             <span className="min-w-0">
               <span className="block truncate font-medium">{s.supplier}</span>
-              {s.attack && <AttackTag technique={s.attack} />}
             </span>
           </span>
         );

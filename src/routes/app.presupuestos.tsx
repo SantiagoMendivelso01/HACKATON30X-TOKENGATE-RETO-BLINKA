@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { NoMoneyNotice, PageHeader, Panel, SimBadge, Term } from "@/components/tg/primitives";
+import { NoMoneyNotice, PageHeader, Panel, Term } from "@/components/tg/primitives";
 import { useTokenGate } from "@/lib/tokengate/store";
 import { formatBase, formatMoney, moneyParts } from "@/lib/tokengate/format";
 import type { Currency } from "@/lib/tokengate/types";
@@ -111,9 +111,6 @@ function Presupuestos() {
         title="Presupuestos"
         subtitle="Lo pagado y lo reservado por aprobaciones salen del mismo presupuesto. Si una factura no cabe, el agente la bloquea."
       />
-      <div className="mb-2 flex justify-end">
-        <SimBadge />
-      </div>
 
       <Panel>
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -192,7 +189,7 @@ function Presupuestos() {
       <Panel
         className="mt-4"
         title="Exposición por moneda"
-        description="Importes en la moneda original y su equivalente en USD con la tabla de cambio de la demo."
+        description="Importes en la moneda original y su equivalente en USD con la tabla de cambio configurada."
         bodyClassName="p-0"
       >
         <div className="overflow-x-auto">
@@ -212,7 +209,7 @@ function Presupuestos() {
                   <td className="px-5 py-3">
                     <span className="font-mono font-medium">{r.c}</span>
                     <span className="ml-2 text-xs text-muted-foreground">
-                      1 USD = {r.fx.toLocaleString("en-US")}
+                      {r.fx ? `1 USD = ${r.fx.toLocaleString("en-US")}` : "sin tasa de cambio"}
                     </span>
                   </td>
                   <td className="tabular px-5 py-3 text-right">

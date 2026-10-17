@@ -65,9 +65,6 @@ function Login() {
           <GoogleIcon />
           {loading ? "Conectando…" : "Continuar con Google"}
         </button>
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          Demo: entrarás con datos ficticios de Andes Labs y Acme Studio.
-        </p>
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Cada decisión tiene reglas, límites y una razón detrás.
         </p>

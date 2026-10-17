@@ -351,7 +351,7 @@ function Politicas() {
 
         <Panel
           title="Monedas permitidas"
-          description="Tabla de cambio de la demo: unidades por 1 USD."
+          description="Unidades por 1 USD. Sin tasa, una moneda no se puede convertir: conéctala antes de permitirla."
         >
           <div className="flex flex-wrap gap-2">
             {CURRENCIES.map((c) => {
@@ -371,7 +371,7 @@ function Politicas() {
                 >
                   {c}
                   <span className="text-[11px] opacity-70">
-                    {seed.fx[c].toLocaleString("en-US")}
+                    {seed.fx[c]?.toLocaleString("en-US") ?? "sin tasa"}
                   </span>
                 </button>
               );

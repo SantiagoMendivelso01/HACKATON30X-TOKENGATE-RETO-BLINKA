@@ -26,9 +26,8 @@ dist-ssr
 .wrangler/
 coverage/
 
-# Configuración local de Claude Code y prototipo HTML previo
+# Configuración local de Claude Code
 .claude/
-mockup/
 
 # Editor directories and files
 .vscode/*

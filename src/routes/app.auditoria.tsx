@@ -9,7 +9,6 @@ import {
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
-  Swords,
   User,
   UserCheck,
   Download,
@@ -22,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EmptyState, PageHeader, Panel, SimBadge } from "@/components/tg/primitives";
+import { EmptyState, PageHeader, Panel } from "@/components/tg/primitives";
 import { useTokenGate, type TrailEvent } from "@/lib/tokengate/store";
 import { formatDateTime } from "@/lib/tokengate/format";
 import { cn } from "@/lib/utils";
@@ -49,7 +48,6 @@ const typeMeta: Record<AuditEvent["type"], { label: string; icon: typeof Bot }> 
   payment: { label: "Pago (sandbox)", icon: Receipt },
   policy_change: { label: "Cambio de política", icon: SlidersHorizontal },
   invoice_upload: { label: "Factura recibida", icon: FileUp },
-  attack: { label: "Red team", icon: Swords },
   settings: { label: "Configuración", icon: Cog },
   system: { label: "Evento del sistema", icon: ShieldCheck },
 };
@@ -65,7 +63,7 @@ function download(name: string, rows: (string | number)[][]) {
 }
 
 function Auditoria() {
-  const { trail, brokenAt, tampered, toggleTamper, seed } = useTokenGate();
+  const { trail, brokenAt, seed } = useTokenGate();
   const [type, setType] = useState<"all" | AuditEvent["type"]>("all");
   const [actor, setActor] = useState<"all" | AuditEvent["actorKind"]>("all");
 
@@ -88,10 +86,6 @@ function Auditoria() {
         subtitle="Cada evento queda encadenado con un hash al anterior. Si alguien edita o borra un evento pasado, la cadena se rompe y se nota."
         actions={
           <>
-            <Button variant="outline" className="h-10" onClick={toggleTamper}>
-              <ShieldAlert className="h-4 w-4" />
-              {tampered ? "Deshacer manipulación" : "Simular manipulación"}
-            </Button>
             <Button
               variant="outline"
               className="h-10"
@@ -132,12 +126,8 @@ function Auditoria() {
 
       <Panel
         bodyClassName="p-0"
-        title={
-          <span className="flex items-center gap-2">
-            {events.length} eventos <SimBadge />
-          </span>
-        }
-        description="Demo en memoria con hash encadenado. En producción vive en un backend de confianza, de solo escritura."
+        title={<span className="flex items-center gap-2">{events.length} eventos</span>}
+        description="En memoria con hash encadenado: se pierde al recargar. En producción vive en un backend de confianza, de solo escritura."
       >
         <div className="grid gap-2 border-b border-border p-3 sm:grid-cols-2">
           <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
@@ -195,9 +185,7 @@ function Auditoria() {
                       "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
                       accent
                         ? "border-primary/25 bg-accent text-primary"
-                        : e.type === "attack"
-                          ? "border-destructive/25 bg-destructive/10 text-destructive"
-                          : "border-border bg-card text-muted-foreground",
+                        : "border-border bg-card text-muted-foreground",
                     )}
                   >
                     <m.icon className="h-4 w-4" aria-hidden />
