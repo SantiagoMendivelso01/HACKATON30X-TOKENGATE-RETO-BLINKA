@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Save, Sparkles, X, ArrowRight } from "lucide-react";
+import { Plus, Save, Sparkles, X } from "lucide-react";
+
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,8 @@ import { useTokenGate } from "@/lib/tokengate/store";
 import { formatMoney, minorToInput, parseToMinor } from "@/lib/tokengate/format";
 import { interpretRule, RULE_EXAMPLES, type PolicyChange } from "@/lib/tokengate/nl-rules";
 import type { Currency, DisplayStatus, Policy } from "@/lib/tokengate/types";
+import { JevPanel } from "@/components/tg/jev-panel";
+
 
 export const Route = createFileRoute("/app/politicas")({
   head: () => ({
@@ -222,8 +225,13 @@ function Politicas() {
         }
       />
 
+      <div className="mb-6">
+        <JevPanel />
+      </div>
+
       <Panel
         className="mb-4"
+
         title={
           <span className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
