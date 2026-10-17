@@ -33,7 +33,7 @@ function dateOf(e: EvaluatedSubject) {
 export function SubjectTable({
   rows,
   onOpen,
-  columns = ["reference", "supplier", "agent", "amount", "date", "status"],
+  columns = ["reference", "supplier", "description", "amount", "date", "status"],
   dateLabel,
   referenceLabel,
 }: {

@@ -57,7 +57,7 @@ function Bars({ rows }: { rows: { name: string; paid: number; pending: number }[
 }
 
 function Presupuestos() {
-  const { policy, all, ledger, seed, agentName } = useTokenGate();
+  const { policy, all, ledger, seed } = useTokenGate();
   const P = policy.monthlyBudget;
   const prev = seed.baselineUsedMinor;
   const paidBatch = ledger.spentMinor - prev;
@@ -187,8 +187,11 @@ function Presupuestos() {
         <Panel title="Por categoría" description="Pagado y reservado, equivalente en USD">
           <Bars rows={group((e) => e.subject.category)} />
         </Panel>
-        <Panel title="Por agente" description="Pagado y reservado, equivalente en USD">
-          <Bars rows={group((e) => agentName(e.subject.agentId))} />
+        <Panel
+          title="Por proveedor / beneficiario"
+          description="Principales beneficiarios por monto pagado y reservado en USD"
+        >
+          <Bars rows={group((e) => e.subject.supplier).slice(0, 6)} />
         </Panel>
       </div>
 

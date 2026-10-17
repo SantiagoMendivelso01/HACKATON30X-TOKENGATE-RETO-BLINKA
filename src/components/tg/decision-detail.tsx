@@ -91,7 +91,7 @@ function highlight(raw: string) {
 }
 
 export function DecisionDetail({ subjectId }: { subjectId: string }) {
-  const { byId, review, agentName, seed } = useTokenGate();
+  const { byId, review, seed } = useTokenGate();
   const [showAll, setShowAll] = useState(false);
   const [pending, setPending] = useState<HumanAction | null>(null);
   const [note, setNote] = useState("");
@@ -125,7 +125,7 @@ export function DecisionDetail({ subjectId }: { subjectId: string }) {
       isInvoice ? "Fecha límite" : "Solicitada",
       s.kind === "invoice" ? formatDate(s.dueDate) : formatDateTime(s.requestedAt),
     ],
-    ["Agente", agentName(s.agentId)],
+    ["ID fiscal", s.supplierTaxId ?? "No detectado"],
     ["Categoría", s.category],
     ["Canal", channelText(s.channel)],
     ["Cuenta destino", s.bankAccount ?? "—"],

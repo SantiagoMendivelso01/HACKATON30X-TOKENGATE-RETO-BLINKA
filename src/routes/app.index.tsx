@@ -376,12 +376,60 @@ function Dashboard() {
             </Button>
             <Button variant="outline" asChild>
               <Link to="/app/aprobaciones">
-                Aprobaciones · {queue.length}
+                Por aprobar · {queue.length}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
+            <Button variant="ghost" asChild>
+              <Link to="/app/ajustes">Configurar reglas de pago</Link>
+            </Button>
           </div>
         </div>
+      </section>
+
+      {/* Flujo operativo desde primeros principios */}
+      <section className="mb-5 grid gap-3 sm:grid-cols-3">
+        <Link
+          to="/app/ajustes"
+          className="group rounded-2xl border border-border/80 bg-card p-4 transition-colors hover:border-primary/50"
+        >
+          <span className="font-mono text-xs font-semibold text-primary">PASO 1 · REGLAS</span>
+          <h2 className="mt-1 text-sm font-semibold group-hover:text-primary">
+            Define tus límites y contratos
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Configura hasta cuánto paga el agente solo ({formatBase(policy.approvalThreshold)}),
+            proveedores permitidos y tasas de cambio.
+          </p>
+        </Link>
+        <Link
+          to="/app/facturas"
+          search={{ upload: true }}
+          className="group rounded-2xl border border-border/80 bg-card p-4 transition-colors hover:border-primary/50"
+        >
+          <span className="font-mono text-xs font-semibold text-primary">PASO 2 · FACTURAS</span>
+          <h2 className="mt-1 text-sm font-semibold group-hover:text-primary">
+            Sube cuentas de cobro con OCR
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            El agente extrae quién cobra, cuánto, en qué moneda y para cuándo, y evalúa las 14
+            reglas al instante.
+          </p>
+        </Link>
+        <Link
+          to="/app/aprobaciones"
+          className="group rounded-2xl border border-border/80 bg-card p-4 transition-colors hover:border-primary/50"
+        >
+          <span className="font-mono text-xs font-semibold text-primary">
+            PASO 3 · PERMISO Y AUDITORÍA
+          </span>
+          <h2 className="mt-1 text-sm font-semibold group-hover:text-primary">
+            Autoriza excepciones ({queue.length} pendientes)
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Da permiso humano cuando algo supera las reglas y audita cada explicación paso a paso.
+          </p>
+        </Link>
       </section>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -455,7 +503,7 @@ function Dashboard() {
             className="sm:col-span-2"
             label="Monto procesado"
             value={<Money animate value={{ amountMinor: processed, currency: "USD" }} />}
-            hint={`${n} operaciones · ${new Set(regs.map((e) => e.subject.amount.currency)).size} monedas · ${seed.agents.length} agentes`}
+            hint={`${n} facturas evaluadas · ${new Set(regs.map((e) => e.subject.amount.currency)).size} monedas · ${seed.suppliers.length} contratos activos`}
           />
         </div>
       </div>
@@ -666,7 +714,7 @@ function Dashboard() {
             })}
           </ul>
           <Button variant="outline" size="sm" className="mt-4 w-fit" asChild>
-            <Link to="/app/alertas">Ver alertas</Link>
+            <Link to="/app/auditoria">Ver auditoría y decisiones</Link>
           </Button>
         </Card>
       </div>
