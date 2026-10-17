@@ -1,9 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import {
-  evaluateWithJev,
-  JevInputSchema,
-  type JevDecisionEvaluation,
-} from "./jev";
+import { evaluateWithJev, JevInputSchema, type JevDecisionEvaluation } from "./jev";
 
 export const evaluateJevDecisionFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => JevInputSchema.parse(d))

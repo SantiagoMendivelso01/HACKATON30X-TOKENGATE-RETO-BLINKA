@@ -28,7 +28,8 @@ import { cn } from "@/lib/utils";
 const PRESETS: { label: string; description: string; input: JevDecisionInput }[] = [
   {
     label: "Proveedor válido ($45 USD)",
-    description: "Proveedor en lista de válidos y monto <= 100 USD -> Debe aprobar automáticamente.",
+    description:
+      "Proveedor en lista de válidos y monto <= 100 USD -> Debe aprobar automáticamente.",
     input: {
       supplier: "AWS",
       amount: 45,
@@ -60,7 +61,8 @@ const PRESETS: { label: string; description: string; input: JevDecisionInput }[]
   },
   {
     label: "Monto > 100 USD ($150 USD)",
-    description: "Supera el gasto diario de 100 USD -> Debe escalar y explicar que es por el monto.",
+    description:
+      "Supera el gasto diario de 100 USD -> Debe escalar y explicar que es por el monto.",
     input: {
       supplier: "AWS",
       amount: 150,
@@ -92,7 +94,8 @@ const PRESETS: { label: string; description: string; input: JevDecisionInput }[]
   },
   {
     label: "Factura duplicada",
-    description: "Mismo proveedor, número e importe ya registrados -> Debe frenar mientras se comprueba.",
+    description:
+      "Mismo proveedor, número e importe ya registrados -> Debe frenar mientras se comprueba.",
     input: {
       supplier: "Linear",
       amount: 96,
@@ -111,7 +114,8 @@ const PRESETS: { label: string; description: string; input: JevDecisionInput }[]
   },
   {
     label: "Falta NIT (Dato esencial)",
-    description: "Falta identificación fiscal -> Solicitar revisión para que un humano complete info.",
+    description:
+      "Falta identificación fiscal -> Solicitar revisión para que un humano complete info.",
     input: {
       supplier: "Diseñador Freelance",
       amount: 80,
@@ -150,7 +154,9 @@ export function JevPanel() {
   const [form, setForm] = useState<JevDecisionInput>(PRESETS[0]!.input);
   const [evaluating, setEvaluating] = useState(false);
   const [activePresetIndex, setActivePresetIndex] = useState<number | null>(0);
-  const [result, setResult] = useState<JevDecisionEvaluation>(() => evaluateJevLocally(PRESETS[0]!.input));
+  const [result, setResult] = useState<JevDecisionEvaluation>(() =>
+    evaluateJevLocally(PRESETS[0]!.input),
+  );
 
   const runEvaluation = async (inputToRun: JevDecisionInput = form) => {
     setEvaluating(true);
@@ -166,7 +172,6 @@ export function JevPanel() {
       setEvaluating(false);
     }
   };
-
 
   const selectPreset = (index: number) => {
     setActivePresetIndex(index);
@@ -361,7 +366,6 @@ export function JevPanel() {
               />
             </div>
           </div>
-
 
           <Button
             type="button"

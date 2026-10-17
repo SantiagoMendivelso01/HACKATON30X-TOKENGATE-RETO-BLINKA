@@ -193,7 +193,6 @@ describe("JEV TypeSafe Decision Engine — Reto Blinka", () => {
     expect(questions.action.criteria["aprobar"]).toBeDefined();
     expect(questions.action.criteria["escalar"]).toBeDefined();
     expect(questions.action.criteria["frenar"]).toBeDefined();
-
   });
 
   it("Caso 9: Precedencia — Frena si supera límite absoluto incluso si también es un proveedor nuevo", () => {
@@ -255,4 +254,3 @@ describe("JEV TypeSafe Decision Engine — Reto Blinka", () => {
     expect(res.reason).toBe("monto_mayor_100_usd");
   });
 });
-
