@@ -49,7 +49,9 @@ export function SubjectTable({
     const s = e.subject;
     switch (c) {
       case "reference":
-        return <span className="font-mono text-xs font-medium">{s.reference}</span>;
+        return (
+          <span className="whitespace-nowrap font-mono text-xs font-medium">{s.reference}</span>
+        );
       case "supplier":
         return (
           <span className="flex min-w-0 items-center gap-3">

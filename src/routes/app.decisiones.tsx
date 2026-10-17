@@ -168,7 +168,9 @@ function Decisiones() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-xs font-medium">{s.reference}</span>
+                        <span className="whitespace-nowrap font-mono text-xs font-medium">
+                          {s.reference}
+                        </span>
                         <span className="text-sm">{s.supplier}</span>
                         <span className="tabular text-sm text-muted-foreground">
                           {formatMoney(s.amount)}
