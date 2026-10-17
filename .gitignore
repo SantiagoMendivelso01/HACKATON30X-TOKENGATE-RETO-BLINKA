@@ -16,9 +16,19 @@ dist-ssr
 .nitro
 *.local
 
-# Wrangler / Cloudflare
-.wrangler/
+# Variables de entorno (la clave de Claude nunca se sube)
+.env
+.env.*
+!.env.example
 .dev.vars
+
+# Builds y caches
+.wrangler/
+coverage/
+
+# Configuración local de Claude Code y prototipo HTML previo
+.claude/
+mockup/
 
 # Editor directories and files
 .vscode/*
