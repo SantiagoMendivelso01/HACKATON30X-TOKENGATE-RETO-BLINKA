@@ -1,0 +1,7 @@
+# Todo el texto se guarda y se trabaja con LF (lo que esperan Prettier y ESLint),
+# también en Windows. Los scripts de PowerShell conservan CRLF.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.ico binary
+*.png binary
+*.pdf binary
