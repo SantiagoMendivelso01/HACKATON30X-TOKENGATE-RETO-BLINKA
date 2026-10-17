@@ -2,7 +2,13 @@ import { useMemo, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Check, FilePlus2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ChannelIcon, Money, NoMoneyNotice, StatusBadge } from "@/components/tg/primitives";
+import {
+  ChannelIcon,
+  CountUp,
+  Money,
+  NoMoneyNotice,
+  StatusBadge,
+} from "@/components/tg/primitives";
 import { DecisionSheet } from "@/components/tg/decision-detail";
 import { sevMeta } from "@/components/tg/severity";
 import { useTokenGate, type EvaluatedSubject } from "@/lib/tokengate/store";
@@ -224,10 +230,19 @@ function DailyChart({ regs }: { regs: EvaluatedSubject[] }) {
                 <path
                   key={o}
                   d={`M${x},${y0 + hh}V${y0 + r}Q${x},${y0} ${x + r},${y0}H${x + bw - r}Q${x + bw},${y0} ${x + bw},${y0 + r}V${y0 + hh}Z`}
+                  className="bar-grow-y"
                   fill={OUT_COLOR[o]}
                 />
               ) : (
-                <rect key={o} x={x} y={y0} width={bw} height={hh} fill={OUT_COLOR[o]} />
+                <rect
+                  key={o}
+                  className="bar-grow-y"
+                  x={x}
+                  y={y0}
+                  width={bw}
+                  height={hh}
+                  fill={OUT_COLOR[o]}
+                />
               );
             })}
             {(i % every === 0 || i === days.length - 1) && (
@@ -374,7 +389,7 @@ function Dashboard() {
         {chip(range === "7d", "Últimos 7 días", () => setRange("7d"))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      <div className="stagger grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <section
           className={cn(
             "relative flex flex-col overflow-hidden rounded-2xl border p-6 shadow-soft",
@@ -390,7 +405,7 @@ function Dashboard() {
               unsafe ? "text-destructive" : "text-success",
             )}
           >
-            {unsafe}
+            <CountUp value={unsafe} />
           </p>
           <p className="mt-2 flex items-center gap-2 text-base font-medium">
             <span
@@ -423,23 +438,23 @@ function Dashboard() {
           </div>
         </section>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="stagger grid gap-4 sm:grid-cols-2">
           <Tile
             label="Autonomía"
-            value={`${pct(autonomous, n)}%`}
+            value={<CountUp value={pct(autonomous, n)} suffix="%" />}
             meter={pct(autonomous, n)}
             hint={`${autonomous} de ${n} decididas sin intervención humana`}
           />
           <Tile
             label="Explicabilidad"
-            value={`${pct(explained, n)}%`}
+            value={<CountUp value={pct(explained, n)} suffix="%" />}
             meter={pct(explained, n)}
             hint="Con motivo en lenguaje claro, 14 reglas evaluadas y “qué habría cambiado”"
           />
           <Tile
             className="sm:col-span-2"
             label="Monto procesado"
-            value={<Money value={{ amountMinor: processed, currency: "USD" }} />}
+            value={<Money animate value={{ amountMinor: processed, currency: "USD" }} />}
             hint={`${n} operaciones · ${new Set(regs.map((e) => e.subject.amount.currency)).size} monedas · ${seed.agents.length} agentes`}
           />
         </div>
@@ -479,6 +494,7 @@ function Dashboard() {
                 <span
                   key={f.k}
                   title={`${f.k}: ${f.n} (${pct(f.n, n)}%) · ${formatBase(f.usd)}`}
+                  className="bar-grow"
                   style={{ flex: f.n, background: f.c }}
                 />
               ))}
@@ -526,7 +542,7 @@ function Dashboard() {
                   <span className="text-[13px] leading-tight text-foreground/80">{r.label}</span>
                   <span className="flex items-center gap-2">
                     <span
-                      className="h-3 rounded-r bg-primary"
+                      className="bar-grow h-3 rounded-r bg-primary"
                       style={{ width: `${(r.n / maxReason) * 100}%`, minWidth: 2 }}
                     />
                     <span className="tabular text-xs font-medium">{r.n}</span>
@@ -560,21 +576,27 @@ function Dashboard() {
           sub={`Usado o reservado: ${pct(ledger.spentMinor + ledger.committedMinor, P)}%`}
         >
           <p className="display text-3xl">
-            <Money value={{ amountMinor: Math.max(0, ledger.availableMinor), currency: "USD" }} />{" "}
+            <Money
+              animate
+              value={{ amountMinor: Math.max(0, ledger.availableMinor), currency: "USD" }}
+            />{" "}
             <span className="text-sm font-normal tracking-normal text-muted-foreground">
               disponibles de {formatBase(P)}
             </span>
           </p>
           <div className="mt-4 flex h-2.5 gap-[2px] overflow-hidden rounded-full bg-muted">
             <span
+              className="bar-grow"
               title={`Pagos previos ${formatBase(prev)}`}
               style={{ width: w(prev), background: "var(--color-chart-5)" }}
             />
             <span
+              className="bar-grow"
               title={`Pagado en el lote ${formatBase(ledger.spentMinor - prev)}`}
               style={{ width: w(ledger.spentMinor - prev), background: "var(--color-success)" }}
             />
             <span
+              className="bar-grow"
               title={`Reservado ${formatBase(ledger.committedMinor)}`}
               style={{ width: w(ledger.committedMinor), background: "var(--color-warning)" }}
             />
@@ -635,7 +657,7 @@ function Dashboard() {
                     {m.label}
                   </span>
                   <span
-                    className={cn("h-3 rounded-r", m.bar)}
+                    className={cn("bar-grow h-3 rounded-r", m.bar)}
                     style={{ width: `${(sevCount(s) / maxSev) * 100}%`, minWidth: 2 }}
                   />
                   <span className="tabular text-xs font-medium">{sevCount(s)}</span>
@@ -676,7 +698,7 @@ function Tile({
       <p className="display mt-1.5 text-[38px]">{value}</p>
       {meter !== undefined && (
         <div className="my-3 h-1.5 overflow-hidden rounded-full bg-accent">
-          <div className="h-full rounded-full bg-primary" style={{ width: `${meter}%` }} />
+          <div className="bar-grow h-full rounded-full bg-primary" style={{ width: `${meter}%` }} />
         </div>
       )}
       <p className={cn("text-xs text-muted-foreground", meter === undefined && "mt-3")}>{hint}</p>
@@ -701,7 +723,7 @@ function ActivityList({
           <button
             type="button"
             onClick={() => onOpen(e.subject.id)}
-            className="flex w-full items-center gap-3 py-2.5 text-left"
+            className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-muted/60"
           >
             {!compact && <ChannelIcon channel={e.subject.channel} />}
             <span className="min-w-0 flex-1">

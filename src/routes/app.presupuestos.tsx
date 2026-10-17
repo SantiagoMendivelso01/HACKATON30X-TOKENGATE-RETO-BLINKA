@@ -41,7 +41,7 @@ function Bars({ rows }: { rows: { name: string; paid: number; pending: number }[
         >
           <span className="truncate text-foreground/85">{r.name}</span>
           <span
-            className="flex h-3 gap-[2px] overflow-hidden rounded-r"
+            className="bar-grow flex h-3 gap-[2px] overflow-hidden rounded-r"
             style={{ width: `${((r.paid + r.pending) / max) * 100}%`, minWidth: 2 }}
           >
             {r.paid > 0 && <span style={{ flex: r.paid, background: STATE_COLOR.paid }} />}
@@ -159,9 +159,15 @@ function Presupuestos() {
           role="img"
           aria-label={`${used}% del presupuesto usado o reservado`}
         >
-          <span style={{ width: pct(prev), background: STATE_COLOR.prev }} />
-          <span style={{ width: pct(paidBatch), background: STATE_COLOR.paid }} />
-          <span style={{ width: pct(ledger.committedMinor), background: STATE_COLOR.pending }} />
+          <span className="bar-grow" style={{ width: pct(prev), background: STATE_COLOR.prev }} />
+          <span
+            className="bar-grow"
+            style={{ width: pct(paidBatch), background: STATE_COLOR.paid }}
+          />
+          <span
+            className="bar-grow"
+            style={{ width: pct(ledger.committedMinor), background: STATE_COLOR.pending }}
+          />
         </div>
         <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
           {[

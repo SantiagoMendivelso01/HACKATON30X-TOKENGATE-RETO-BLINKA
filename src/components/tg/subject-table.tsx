@@ -145,7 +145,7 @@ export function SubjectTable({
                 tabIndex={0}
                 onClick={() => onOpen(e.subject.id)}
                 onKeyDown={(ev) => ev.key === "Enter" && onOpen(e.subject.id)}
-                className="cursor-pointer border-b border-border/70 last:border-0 hover:bg-background/70 focus-visible:bg-muted focus-visible:outline-none"
+                className="cursor-pointer border-b border-border/70 transition-colors last:border-0 hover:bg-background/70 focus-visible:bg-muted focus-visible:outline-none"
               >
                 {columns.map((c) => (
                   <td

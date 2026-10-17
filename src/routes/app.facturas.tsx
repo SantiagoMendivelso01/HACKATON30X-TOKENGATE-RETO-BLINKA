@@ -58,6 +58,12 @@ export const Route = createFileRoute("/app/facturas")({
 
 const PAGE = 8;
 
+const SORT_LABEL = {
+  due_desc: "Fecha límite: recientes",
+  due_asc: "Fecha límite: antiguas",
+  amount_desc: "Importe: mayor primero",
+} as const;
+
 function Facturas() {
   const { evaluatedInvoices, byId, seed } = useTokenGate();
   const agents = seed.agents;
@@ -141,7 +147,9 @@ function Facturas() {
             }}
           >
             <SelectTrigger className="h-10 lg:w-44" aria-label="Estado">
-              <SelectValue />
+              <SelectValue>
+                {status === "all" ? "Todos los estados" : statusMeta[status].short}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los estados</SelectItem>
@@ -160,7 +168,9 @@ function Facturas() {
             }}
           >
             <SelectTrigger className="h-10 lg:w-40" aria-label="Agente">
-              <SelectValue />
+              <SelectValue>
+                {agents.find((a) => a.id === agent)?.name ?? "Todos los agentes"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los agentes</SelectItem>
@@ -179,7 +189,7 @@ function Facturas() {
             }}
           >
             <SelectTrigger className="h-10 lg:w-32" aria-label="Moneda">
-              <SelectValue />
+              <SelectValue>{currency === "all" ? "Todas" : currency}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
@@ -192,7 +202,7 @@ function Facturas() {
           </Select>
           <Select value={sort} onValueChange={(v) => setSort(v as typeof sort)}>
             <SelectTrigger className="h-10 lg:w-48" aria-label="Ordenar">
-              <SelectValue />
+              <SelectValue>{SORT_LABEL[sort]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="due_desc">Fecha límite: recientes</SelectItem>

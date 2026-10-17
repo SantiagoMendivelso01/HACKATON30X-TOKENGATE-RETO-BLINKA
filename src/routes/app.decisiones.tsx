@@ -42,6 +42,15 @@ export const Route = createFileRoute("/app/decisiones")({
   component: Decisiones,
 });
 
+const OUTCOME_LABEL = {
+  all: "Todos los resultados",
+  authorized: "Autorizadas",
+  blocked: "Bloqueadas",
+  requires_approval: "Requieren aprobación",
+  needs_information: "Pendientes de información",
+  human: "Revisiones humanas",
+} as const;
+
 function Decisiones() {
   const { decisionLog, byId } = useTokenGate();
   const search = Route.useSearch();
@@ -92,7 +101,7 @@ function Decisiones() {
           </div>
           <Select value={outcome} onValueChange={(v) => setOutcome(v as typeof outcome)}>
             <SelectTrigger className="h-10 sm:w-52" aria-label="Resultado">
-              <SelectValue />
+              <SelectValue>{OUTCOME_LABEL[outcome]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los resultados</SelectItem>
@@ -105,7 +114,7 @@ function Decisiones() {
           </Select>
           <Select value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
             <SelectTrigger className="h-10 sm:w-40" aria-label="Periodo">
-              <SelectValue />
+              <SelectValue>{period === "week" ? "Últimos 7 días" : "Este mes"}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Este mes</SelectItem>

@@ -185,6 +185,7 @@
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
       transition-duration: 0.01ms !important;
     }
   }
@@ -229,5 +230,88 @@
   }
   .money .cents {
     opacity: 0.38;
+  }
+}
+
+/* ---------- Movimiento ---------- */
+/* Suave y corto: el contenido sube un poco al entrar y las barras crecen desde cero. */
+@layer components {
+  .page-enter > * {
+    animation: tg-rise 420ms var(--ease-out-soft) both;
+  }
+  .page-enter > :nth-child(2) {
+    animation-delay: 50ms;
+  }
+  .page-enter > :nth-child(3) {
+    animation-delay: 100ms;
+  }
+  .page-enter > :nth-child(4) {
+    animation-delay: 150ms;
+  }
+  .page-enter > :nth-child(5) {
+    animation-delay: 200ms;
+  }
+  .page-enter > :nth-child(n + 6) {
+    animation-delay: 250ms;
+  }
+  /* Tarjetas de una grilla, una tras otra. */
+  .stagger > * {
+    animation: tg-rise 420ms var(--ease-out-soft) both;
+  }
+  .stagger > :nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .stagger > :nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .stagger > :nth-child(4) {
+    animation-delay: 180ms;
+  }
+  .stagger > :nth-child(n + 5) {
+    animation-delay: 240ms;
+  }
+  .bar-grow {
+    transform-origin: left center;
+    animation: tg-grow-x 800ms var(--ease-out-soft) 150ms both;
+    transition:
+      width 500ms var(--ease-out-soft),
+      flex-grow 500ms var(--ease-out-soft);
+  }
+  .bar-grow-y {
+    transform-box: fill-box;
+    transform-origin: bottom;
+    animation: tg-grow-y 700ms var(--ease-out-soft) 150ms both;
+  }
+  /* Tarjeta que se puede abrir: se eleva un poco al pasar el mouse. */
+  .lift {
+    transition:
+      transform 200ms var(--ease-out-soft),
+      box-shadow 200ms var(--ease-out-soft),
+      border-color 200ms;
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 2px oklch(0.262 0.042 265 / 4%),
+      0 18px 40px -20px oklch(0.262 0.042 265 / 28%);
+  }
+}
+:root {
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes tg-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes tg-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes tg-grow-y {
+  from {
+    transform: scaleY(0);
   }
 }

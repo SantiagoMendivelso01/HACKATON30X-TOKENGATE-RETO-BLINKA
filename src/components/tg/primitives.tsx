@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Bot,
   FileText,
@@ -169,9 +169,51 @@ export function NoMoneyNotice({ className }: { className?: string }) {
   );
 }
 
+/** Counts from the previous value (0 on first render) up to `target`, easing out. */
+function useCountUp(target: number, enabled = true, ms = 800): number {
+  const [v, setV] = useState(0);
+  const from = useRef(0);
+  useEffect(() => {
+    if (!enabled) return;
+    const start = from.current;
+    from.current = target;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setV(target);
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / ms);
+      setV(start + (target - start) * (1 - (1 - p) ** 3));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, enabled, ms]);
+  return enabled ? v : target;
+}
+
+/** A whole number that counts up when it appears or changes. */
+export function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
+  return (
+    <span className="tabular">
+      {Math.round(useCountUp(value))}
+      {suffix}
+    </span>
+  );
+}
+
 /** Blinka-style amount: small currency code, whole number, muted cents. */
-export function Money({ value, className }: { value: MoneyT; className?: string }) {
-  const p = moneyParts(value);
+export function Money({
+  value,
+  className,
+  animate = false,
+}: {
+  value: MoneyT;
+  className?: string;
+  /** Count up to the amount when it appears or changes. */
+  animate?: boolean;
+}) {
+  const shown = useCountUp(value.amountMinor, animate);
+  const p = moneyParts({ ...value, amountMinor: Math.round(shown) });
   return (
     <span className={cn("money whitespace-nowrap tabular", className)}>
       <span className="cur">{p.cur}</span>
