@@ -254,4 +254,3 @@ describe("JEV TypeSafe Decision Engine — Reto Blinka", () => {
     expect(res.reason).toBe("monto_mayor_100_usd");
   });
 });
-
