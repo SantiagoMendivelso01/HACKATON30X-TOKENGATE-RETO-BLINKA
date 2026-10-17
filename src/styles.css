@@ -1,0 +1,224 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design system definition.
+ *
+ * The @theme inline block maps CSS custom properties to Tailwind utility
+ * classes (e.g. --color-primary -> bg-primary, text-primary).
+ *
+ * The :root and .dark blocks define the actual color values using oklch.
+ * All colors MUST use oklch format.
+ *
+ * To add a new semantic color:
+ * 1. Add the variable to :root (light value) and .dark (dark value)
+ * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ */
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-surface: var(--surface);
+  --shadow-soft: var(--shadow-soft);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* Identidad visual inspirada en blinka.co: papel cálido, tinta azul noche, acento azul. */
+:root {
+  --radius: 0.875rem;
+  --background: oklch(0.973 0.004 106); /* #f7f7f4 papel */
+  --foreground: oklch(0.262 0.042 265); /* #1c253a tinta */
+  --primary: oklch(0.488 0.208 268); /* #2a4bd0 azul Blinka */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.488 0.208 268);
+  --secondary-foreground: oklch(1 0 0);
+  --accent: oklch(0.97 0.012 275); /* #f3f5fd */
+  --accent-foreground: oklch(0.262 0.042 265);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.262 0.042 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.262 0.042 265);
+  --muted: oklch(0.952 0.005 247); /* #e9edf1 */
+  --muted-foreground: oklch(0.52 0.016 268); /* #656975 */
+  --border: oklch(0.895 0.004 106); /* #dedfdc */
+  --input: oklch(0.86 0.006 106);
+  --ring: oklch(0.488 0.208 268);
+  --destructive: oklch(0.51 0.18 27); /* #b3261e */
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.49 0.1 167); /* #007456 */
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.72 0.14 73); /* #d99a1c */
+  --warning-foreground: oklch(0.42 0.09 65); /* #9a5b00 */
+  --surface: oklch(1 0 0);
+  --chart-1: oklch(0.488 0.208 268);
+  --chart-2: oklch(0.49 0.1 167);
+  --chart-3: oklch(0.72 0.14 73);
+  --chart-4: oklch(0.51 0.18 27);
+  --chart-5: oklch(0.7 0.02 260);
+  --sidebar-background: oklch(0.973 0.004 106);
+  --sidebar: var(--sidebar-background);
+  --sidebar-foreground: oklch(0.52 0.016 268);
+  --sidebar-primary: oklch(1 0 0);
+  --sidebar-primary-foreground: oklch(0.262 0.042 265);
+  --sidebar-accent: oklch(0.262 0.042 265 / 5%);
+  --sidebar-accent-foreground: oklch(0.262 0.042 265);
+  --sidebar-border: oklch(0.895 0.004 106);
+  --sidebar-ring: oklch(0.488 0.208 268);
+  --shadow-soft:
+    0 1px 2px oklch(0.262 0.042 265 / 4%), 0 12px 32px -18px oklch(0.262 0.042 265 / 18%);
+}
+
+.dark {
+  --background: oklch(0.18 0.02 265);
+  --foreground: oklch(0.95 0.005 265);
+  --primary: oklch(0.66 0.16 268);
+  --primary-foreground: oklch(0.16 0.02 265);
+  --secondary: oklch(0.66 0.16 268);
+  --secondary-foreground: oklch(0.16 0.02 265);
+  --accent: oklch(0.26 0.04 268);
+  --accent-foreground: oklch(0.95 0.005 265);
+  --card: oklch(0.22 0.022 265);
+  --card-foreground: oklch(0.95 0.005 265);
+  --popover: oklch(0.24 0.022 265);
+  --popover-foreground: oklch(0.95 0.005 265);
+  --muted: oklch(0.26 0.02 265);
+  --muted-foreground: oklch(0.72 0.015 265);
+  --border: oklch(0.31 0.02 265);
+  --input: oklch(0.38 0.02 265);
+  --ring: oklch(0.66 0.16 268);
+  --destructive: oklch(0.68 0.17 25);
+  --destructive-foreground: oklch(0.16 0.02 265);
+  --success: oklch(0.72 0.12 165);
+  --success-foreground: oklch(0.16 0.02 165);
+  --warning: oklch(0.8 0.13 78);
+  --warning-foreground: oklch(0.85 0.12 80);
+  --surface: oklch(0.22 0.022 265);
+  --chart-1: oklch(0.66 0.16 268);
+  --chart-2: oklch(0.72 0.12 165);
+  --chart-3: oklch(0.8 0.13 78);
+  --chart-4: oklch(0.68 0.17 25);
+  --chart-5: oklch(0.6 0.02 260);
+  --sidebar-background: oklch(0.18 0.02 265);
+  --sidebar: var(--sidebar-background);
+  --sidebar-foreground: oklch(0.72 0.015 265);
+  --sidebar-primary: oklch(0.26 0.025 265);
+  --sidebar-primary-foreground: oklch(0.97 0.005 265);
+  --sidebar-accent: oklch(1 0 0 / 5%);
+  --sidebar-accent-foreground: oklch(0.95 0.005 265);
+  --sidebar-border: oklch(0.31 0.02 265);
+  --sidebar-ring: oklch(0.66 0.16 268);
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 30%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    font-feature-settings: "tnum" 0;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ---------- Detalles de marca Blinka ---------- */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.03em;
+  }
+}
+@layer components {
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted-foreground);
+  }
+  .display {
+    font-weight: 450;
+    letter-spacing: -0.045em;
+    line-height: 1.08;
+  }
+  .money .cur {
+    font-size: 0.52em;
+    font-weight: 500;
+    color: var(--color-muted-foreground);
+    margin-right: 0.35em;
+    vertical-align: 0.32em;
+    letter-spacing: 0.02em;
+  }
+  .money .cents {
+    opacity: 0.38;
+  }
+}
