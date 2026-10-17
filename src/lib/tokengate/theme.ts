@@ -2,7 +2,7 @@ export type Theme = "light" | "dark";
 export const THEME_KEY = "tg-theme";
 
 /** Inline script run before paint to avoid a flash of the wrong theme. */
-export const themeInitScript = `(function(){try{var t=localStorage.getItem("${THEME_KEY}");if(!t){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}if(t==="dark")document.documentElement.classList.add("dark")}catch(e){}})();`;
+export const themeInitScript = `(function(){try{var t=localStorage.getItem("${THEME_KEY}");if(t==="dark")document.documentElement.classList.add("dark")}catch(e){}})();`;
 
 export function getTheme(): Theme {
   return document.documentElement.classList.contains("dark") ? "dark" : "light";

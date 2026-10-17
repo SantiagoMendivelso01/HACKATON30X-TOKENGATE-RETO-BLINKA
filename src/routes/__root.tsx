@@ -81,20 +81,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "TokenGate" },
-      { name: "description", content: "TokenGate: el agente que paga y compra por ti." },
-            { property: "og:title", content: "TokenGate" },
-      { property: "og:description", content: "TokenGate: el agente que paga y compra por ti." },
+      { title: "Agente pagador · blinka" },
+      {
+        name: "description",
+        content: "Agente pagador de blinka: paga solo lo que debe, dentro de tus reglas.",
+      },
+      { property: "og:title", content: "Agente pagador · blinka" },
+      {
+        property: "og:description",
+        content: "Agente pagador de blinka: paga solo lo que debe, dentro de tus reglas.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-          ],
+    ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=Geist+Mono:wght@400;500&display=swap",
+      },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
