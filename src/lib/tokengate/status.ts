@@ -71,7 +71,7 @@ export const toneClasses: Record<StatusMeta["tone"], string> = {
   success: "bg-success/8 text-success border-transparent",
   destructive: "bg-destructive/8 text-destructive border-transparent",
   warning: "bg-warning/12 text-warning-foreground border-transparent dark:text-warning",
-  info: "bg-primary/8 text-primary border-transparent",
+  info: "bg-foreground/8 text-foreground border-transparent",
   neutral: "bg-muted text-muted-foreground border-transparent",
 };
 
@@ -80,7 +80,7 @@ export const toneDot: Record<StatusMeta["tone"], string> = {
   success: "bg-success",
   destructive: "bg-destructive",
   warning: "bg-warning",
-  info: "bg-primary",
+  info: "bg-foreground",
   neutral: "bg-muted-foreground/60",
 };
 

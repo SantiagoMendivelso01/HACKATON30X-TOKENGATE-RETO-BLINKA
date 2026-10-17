@@ -89,19 +89,19 @@
   --border: oklch(0.895 0.004 106); /* #dedfdc */
   --input: oklch(0.86 0.006 106);
   --ring: oklch(0.488 0.208 268);
-  /* Estados en tonos mate: verde Blinka, ocre y rojo ladrillo. Nada neón. */
-  --destructive: oklch(0.5 0.14 25); /* #a63a32 */
+  /* Estados en la gama del azul Blinka; solo lo bloqueado resalta en rojo. */
+  --destructive: oklch(0.62 0.2 23); /* #e5484d bloqueada */
   --destructive-foreground: oklch(1 0 0);
-  --success: oklch(0.49 0.1 167); /* #007456 */
+  --success: oklch(0.488 0.208 268); /* #2a4bd0 autorizada */
   --success-foreground: oklch(1 0 0);
-  --warning: oklch(0.68 0.1 72); /* #c4924a ocre */
-  --warning-foreground: oklch(0.47 0.08 65); /* #85591d */
+  --warning: oklch(0.68 0.13 272); /* #7c93e8 escalada */
+  --warning-foreground: oklch(0.5 0.14 272); /* texto de escalada sobre fondo claro */
   --surface: oklch(1 0 0);
   --chart-1: oklch(0.488 0.208 268);
-  --chart-2: oklch(0.49 0.1 167);
-  --chart-3: oklch(0.68 0.1 72);
-  --chart-4: oklch(0.5 0.14 25);
-  --chart-5: oklch(0.74 0.025 260); /* #a7afbd pizarra */
+  --chart-2: oklch(0.488 0.208 268);
+  --chart-3: oklch(0.68 0.13 272);
+  --chart-4: oklch(0.62 0.2 23);
+  --chart-5: oklch(0.83 0.065 274); /* #b4c2f2 pedir info */
   --sidebar-background: oklch(0.973 0.004 106);
   --sidebar: var(--sidebar-background);
   --sidebar-foreground: oklch(0.52 0.016 268);
@@ -133,18 +133,18 @@
   --border: oklch(0.31 0.02 265);
   --input: oklch(0.38 0.02 265);
   --ring: oklch(0.66 0.16 268);
-  --destructive: oklch(0.68 0.13 25);
+  --destructive: oklch(0.68 0.19 23);
   --destructive-foreground: oklch(0.16 0.02 265);
-  --success: oklch(0.72 0.11 165);
-  --success-foreground: oklch(0.16 0.02 165);
-  --warning: oklch(0.78 0.09 75);
-  --warning-foreground: oklch(0.84 0.08 78);
+  --success: oklch(0.66 0.16 268);
+  --success-foreground: oklch(0.16 0.02 265);
+  --warning: oklch(0.76 0.1 272);
+  --warning-foreground: oklch(0.82 0.08 272);
   --surface: oklch(0.22 0.022 265);
   --chart-1: oklch(0.66 0.16 268);
-  --chart-2: oklch(0.72 0.11 165);
-  --chart-3: oklch(0.78 0.09 75);
-  --chart-4: oklch(0.68 0.13 25);
-  --chart-5: oklch(0.6 0.02 260);
+  --chart-2: oklch(0.66 0.16 268);
+  --chart-3: oklch(0.76 0.1 272);
+  --chart-4: oklch(0.68 0.19 23);
+  --chart-5: oklch(0.5 0.07 272);
   --sidebar-background: oklch(0.18 0.02 265);
   --sidebar: var(--sidebar-background);
   --sidebar-foreground: oklch(0.72 0.015 265);
