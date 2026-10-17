@@ -38,18 +38,18 @@ export type JevDecisionInput = {
   amountUsd: number;
   isApprovedSupplier: boolean;
   isNewSupplier: boolean;
-  dailySpentUsd?: number;
-  dailyLimitMaxUsd?: number; // Límite diario absoluto: 1000 USD
-  dailyApprovalThresholdUsd?: number; // Umbral de aprobación humana: 100 USD
-  invoiceNumber?: string;
-  isDuplicate?: boolean;
-  duplicateDetails?: string;
-  missingFields?: string[];
-  hasContradictions?: boolean;
-  contradictionDetails?: string;
-  isRecurring?: boolean;
-  recurringAverageUsd?: number;
-  recurringVariationPct?: number;
+  dailySpentUsd?: number | undefined;
+  dailyLimitMaxUsd?: number | undefined; // Límite diario absoluto: 1000 USD
+  dailyApprovalThresholdUsd?: number | undefined; // Umbral de aprobación humana: 100 USD
+  invoiceNumber?: string | undefined;
+  isDuplicate?: boolean | undefined;
+  duplicateDetails?: string | undefined;
+  missingFields?: string[] | undefined;
+  hasContradictions?: boolean | undefined;
+  contradictionDetails?: string | undefined;
+  isRecurring?: boolean | undefined;
+  recurringAverageUsd?: number | undefined;
+  recurringVariationPct?: number | undefined;
 };
 
 export type JevApiResponse = {
@@ -90,7 +90,7 @@ export type JevDecisionEvaluation = {
   evaluator: "jev-typesafe-api" | "jev-rules-engine";
   rules: RuleResult[];
   rawState: string;
-  rawQuestions: Record<string, unknown>;
+  rawQuestions: ReturnType<typeof buildJevQuestions>;
   answers?: JevApiResponse["answers"] | undefined;
 };
 
