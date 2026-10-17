@@ -85,7 +85,7 @@ function Politicas() {
   } | null>(null);
 
   const interpret = (text: string) => {
-    const changes = interpretRule(text, policy);
+    const changes = interpretRule(text, policy, seed.fx);
     const next = { ...policy } as Policy;
     changes.forEach((c) => ((next as Record<string, unknown>)[c.field] = c.after));
     const diffs = changes.length
@@ -157,33 +157,48 @@ function Politicas() {
       );
   };
 
-  const field = (k: AmountKey | NumKey, label: React.ReactNode, prefix?: string, hint?: string) => (
-    <div className="grid gap-1.5">
-      <label className="text-xs font-medium text-muted-foreground" htmlFor={k}>
-        {label}
-      </label>
-      <div className="relative">
-        {prefix && (
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
-            {prefix}
-          </span>
+  const fxEquiv = (k: AmountKey | NumKey): string | null => {
+    if (!["transactionLimit", "approvalThreshold", "monthlyBudget"].includes(k)) return null;
+    const usdMinor = parseToMinor(f[k]);
+    if (!usdMinor || usdMinor <= 0) return null;
+    const eurRate = seed.fx.EUR ?? 0.92;
+    const copRate = seed.fx.COP ?? 4150;
+    const eurMinor = Math.round(usdMinor * eurRate);
+    const copMinor = Math.round(usdMinor * copRate);
+    return `≈ ${formatMoney({ amountMinor: eurMinor, currency: "EUR" }, { compact: true })} · ≈ ${formatMoney({ amountMinor: copMinor, currency: "COP" }, { compact: true })}`;
+  };
+
+  const field = (k: AmountKey | NumKey, label: React.ReactNode, prefix?: string, hint?: string) => {
+    const eq = fxEquiv(k);
+    return (
+      <div className="grid gap-1.5">
+        <label className="text-xs font-medium text-muted-foreground" htmlFor={k}>
+          {label}
+        </label>
+        <div className="relative">
+          {prefix && (
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+              {prefix}
+            </span>
+          )}
+          <Input
+            id={k}
+            inputMode="decimal"
+            value={f[k]}
+            onChange={(e) => setF({ ...f, [k]: e.target.value })}
+            aria-invalid={!!errors[k]}
+            className={`tabular h-10 rounded-xl bg-background font-mono text-sm ${prefix ? "pl-12" : ""}`}
+          />
+        </div>
+        {eq && <p className="font-mono text-[11px] text-primary/90">{eq}</p>}
+        {errors[k] ? (
+          <p className="text-xs text-destructive">{errors[k]}</p>
+        ) : (
+          hint && <p className="text-[11px] text-muted-foreground">{hint}</p>
         )}
-        <Input
-          id={k}
-          inputMode="decimal"
-          value={f[k]}
-          onChange={(e) => setF({ ...f, [k]: e.target.value })}
-          aria-invalid={!!errors[k]}
-          className={`tabular h-10 rounded-xl bg-background font-mono text-sm ${prefix ? "pl-12" : ""}`}
-        />
       </div>
-      {errors[k] ? (
-        <p className="text-xs text-destructive">{errors[k]}</p>
-      ) : (
-        hint && <p className="text-[11px] text-muted-foreground">{hint}</p>
-      )}
-    </div>
-  );
+    );
+  };
 
   const choice = <K extends "duplicateAction" | "missingInfoAction" | "newSupplierAction">(
     k: K,

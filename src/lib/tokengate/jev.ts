@@ -452,7 +452,7 @@ export async function evaluateWithJev(
   const questions = buildJevQuestions();
 
   try {
-    const res = await fetch("https://jevtypesafeai.com/api/v1/decide", {
+    const res = await fetch("https://api.typesafe.ai/v1/systemone", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${key}`,

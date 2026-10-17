@@ -11,11 +11,25 @@ import type {
   HumanAction,
   HumanReview,
   Invoice,
+  OrgConfig,
   Policy,
   Purchase,
 } from "./types";
 
+export const defaultConfig = (): OrgConfig => ({
+  name: ORG.name,
+  jurisdiction: ORG.jurisdiction,
+  period: ORG.period,
+  inbox: ORG.inbox,
+  user: { ...ORG.user },
+  fx: { ...ORG.fx },
+  baselineUsedMinor: ORG.baselineUsedMinor,
+  suppliers: [...ORG.suppliers],
+  agents: [...ORG.agents],
+});
+
 export type OrgState = {
+  config: OrgConfig;
   invoices: Invoice[];
   purchases: Purchase[];
   policy: Policy;
@@ -47,28 +61,68 @@ export type Action =
       result: DecisionResult;
     }
   | { type: "savePolicy"; policy: Policy; summary: string }
+  | { type: "saveConfig"; config: OrgConfig; summary: string }
   | { type: "addInvoice"; invoice: Invoice }
+  | { type: "addPurchase"; purchase: Purchase }
   | { type: "audit"; event: Omit<AuditEvent, "id" | "at"> };
 
 const byAt = (a: { at: string }, b: { at: string }) => a.at.localeCompare(b.at);
 const byReceived = (a: AnySubject, b: AnySubject) => a.receivedAt.localeCompare(b.receivedAt);
 
-/** Rebuilds the state from stored rows. The latest review of each subject is the one that counts. */
+type StoredAuditEvent = AuditEvent & { config?: OrgConfig | undefined };
+
+/** Rebuilds the state from stored rows. The latest review/config/policy is the one that counts. */
 export function stateFromRows(rows: Rows, defaultPolicy: Policy = ORG.policy): State {
-  const subjects = [...rows.subjects].sort(byReceived);
+  // Deduplicate subjects by ID (keeping the latest entry if updated/corrected)
+  const subjectMap = new Map<string, AnySubject>();
+  for (const s of rows.subjects) {
+    subjectMap.set(s.id, s);
+  }
+  const subjects = [...subjectMap.values()].sort(byReceived);
   const humanLog = [...rows.reviews].sort(byAt);
   const reviews: Record<string, HumanReview> = {};
   for (const r of humanLog)
     if (r.humanAction)
       reviews[r.subjectId] = { action: r.humanAction, by: r.actorName, at: r.at, note: r.note };
-  const audit = [...rows.audit].sort(byAt).reverse();
+
+  const sortedAudit = ([...rows.audit] as StoredAuditEvent[]).sort(byAt);
+  let config = defaultConfig();
+  for (const e of sortedAudit) {
+    if (e.config) {
+      config = {
+        ...config,
+        ...e.config,
+        user: e.config.user ?? config.user,
+        fx: { ...config.fx, ...e.config.fx },
+        suppliers: e.config.suppliers ?? config.suppliers,
+        agents: e.config.agents ?? config.agents,
+      };
+    }
+  }
+
+  const audit = [...sortedAudit].reverse();
   const last = [...rows.reviews.map((r) => r.at), ...rows.audit.map((e) => e.at)]
     .map(Date.parse)
     .reduce((a, b) => Math.max(a, b), 0);
+
+  const storedPolicy = rows.policies.at(-1);
+  // If an older stored policy only had ["USD"] before multi-currency was configured, merge default currencies unless explicitly customized
+  const policy: Policy = storedPolicy
+    ? {
+        ...storedPolicy,
+        allowedCurrencies:
+          storedPolicy.allowedCurrencies.length <= 1 &&
+          !rows.audit.some((e) => e.type === "settings")
+            ? defaultPolicy.allowedCurrencies
+            : storedPolicy.allowedCurrencies,
+      }
+    : defaultPolicy;
+
   return {
+    config,
     invoices: subjects.filter((s): s is Invoice => s.kind === "invoice"),
     purchases: subjects.filter((s): s is Purchase => s.kind === "purchase"),
-    policy: rows.policies.at(-1) ?? defaultPolicy,
+    policy,
     reviews,
     humanLog: humanLog.reverse(),
     audit,
@@ -89,10 +143,12 @@ export function apply(state: State, a: Action): { next: State; writes: Rows } {
   const clock = Math.max(Date.now(), state.clock + 1);
   const at = new Date(clock).toISOString();
   const o = state;
-  const user = ORG.user.name;
+  const user = o.config.user.name;
   const writes = emptyRows();
   const put = (next: Partial<OrgState>) => ({ next: { ...state, ...next, clock }, writes });
-  const event = (e: Omit<AuditEvent, "id" | "at">): AuditEvent => {
+  const event = (
+    e: Omit<AuditEvent, "id" | "at"> & { config?: OrgConfig | undefined },
+  ): AuditEvent => {
     const out = { ...e, id: `au-${clock}`, at };
     writes.audit.push(out);
     return out;
@@ -147,6 +203,23 @@ export function apply(state: State, a: Action): { next: State; writes: Rows } {
         ],
       });
     }
+    case "saveConfig": {
+      const actor = a.config.user.name || user;
+      return put({
+        config: a.config,
+        audit: [
+          event({
+            type: "settings",
+            actor,
+            actorKind: "human",
+            summary: "Configuración de organización actualizada",
+            reason: a.summary,
+            config: a.config,
+          }),
+          ...o.audit,
+        ],
+      });
+    }
     case "addInvoice": {
       const invoice = { ...a.invoice, receivedAt: a.invoice.receivedAt || at };
       writes.subjects.push(invoice);
@@ -160,6 +233,28 @@ export function apply(state: State, a: Action): { next: State; writes: Rows } {
             summary: `Factura ${invoice.reference} cargada`,
             reason: `${invoice.supplier} · ${formatMoney(invoice.amount)}`,
             subjectId: invoice.id,
+          }),
+          ...o.audit,
+        ],
+      });
+    }
+    case "addPurchase": {
+      const purchase = {
+        ...a.purchase,
+        receivedAt: a.purchase.receivedAt || at,
+        requestedAt: a.purchase.requestedAt || at,
+      };
+      writes.subjects.push(purchase);
+      return put({
+        purchases: [...o.purchases, purchase],
+        audit: [
+          event({
+            type: "invoice_upload",
+            actor: user,
+            actorKind: "human",
+            summary: `Solicitud de compra ${purchase.reference} registrada`,
+            reason: `${purchase.supplier} · ${formatMoney(purchase.amount)}`,
+            subjectId: purchase.id,
           }),
           ...o.audit,
         ],

@@ -36,11 +36,30 @@ export const formatCompact = (minor: number) => {
 
 /** Converts money to base-currency (USD) minor units with the org FX table (units per USD). */
 export function toBaseMinor(m: Money, fx: FxTable): number {
-  return Math.round(m.amountMinor / (fx[m.currency] ?? 1));
+  const rate = fx[m.currency] ?? 1;
+  return Math.round(m.amountMinor / rate);
 }
 
-export const formatBase = (minor: number) =>
-  formatMoney({ amountMinor: Math.round(minor), currency: "USD" }, { compact: true });
+/** Converts minor units from one currency to another using the FX table (units per 1 USD). */
+export function convertMinor(
+  amountMinor: number,
+  from: Currency,
+  to: Currency,
+  fx: FxTable,
+): number {
+  if (from === to) return amountMinor;
+  const fromRate = fx[from] ?? 1;
+  const toRate = fx[to] ?? 1;
+  const inUsdMinor = amountMinor / fromRate;
+  return Math.round(inUsdMinor * toRate);
+}
+
+/** Formats a USD minor amount, keeping cents when under $1,000 or when exact precision matters. */
+export const formatBase = (minor: number, opts: { exact?: boolean } = {}) => {
+  const rounded = Math.round(minor);
+  const showDecimals = opts.exact || Math.abs(rounded) < 100_000 || rounded % 100 !== 0;
+  return formatMoney({ amountMinor: rounded, currency: "USD" }, { compact: !showDecimals });
+};
 
 /** Parses a user-entered decimal string ("1.250,50", "1,250.50" or "1250.50") into minor units without floats. */
 export function parseToMinor(input: string): number | null {

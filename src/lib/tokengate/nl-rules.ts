@@ -23,13 +23,35 @@ function firstNumber(t: string): number | null {
   return v;
 }
 
-export function interpretRule(text: string, policy: Policy): PolicyChange[] {
+export function interpretRule(
+  text: string,
+  policy: Policy,
+  fx: Partial<Record<Currency, number>> = {
+    USD: 1,
+    COP: 4150,
+    EUR: 0.92,
+    MXN: 18.2,
+    BRL: 5.4,
+    ARS: 980,
+  },
+): PolicyChange[] {
   const t = text.toLowerCase();
   const num = firstNumber(t);
   const out: PolicyChange[] = [];
   const set = <K extends keyof Policy>(field: K, after: Policy[K], label: string) =>
     out.push({ field, label, before: policy[field], after });
-  const minor = (v: number) => Math.round(v * 100);
+
+  // Detect if the user wrote the amount in EUR, COP, MXN, BRL, or ARS and convert to USD minor units
+  const detectRate = (): number => {
+    if (/\b(cop|pesos?\s+colombianos?)\b/.test(t)) return fx.COP ?? 4150;
+    if (/\b(eur|euros?|€)\b/.test(t)) return fx.EUR ?? 0.92;
+    if (/\b(mxn|pesos?\s+mexicanos?)\b/.test(t)) return fx.MXN ?? 18.2;
+    if (/\b(brl|reales?)\b/.test(t)) return fx.BRL ?? 5.4;
+    if (/\b(ars|pesos?\s+argentinos?)\b/.test(t)) return fx.ARS ?? 980;
+    if (/\bpesos?\b/.test(t)) return fx.COP ?? 4150;
+    return 1; // USD
+  };
+  const minor = (v: number) => Math.round((v / detectRate()) * 100);
 
   if (/(nuev[oa]s?|desconocid)/.test(t) && /(benefici|proveedor)/.test(t)) {
     set(

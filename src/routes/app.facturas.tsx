@@ -28,7 +28,7 @@ import { EmptyState, NoMoneyNotice, PageHeader, Panel } from "@/components/tg/pr
 import { SubjectTable } from "@/components/tg/subject-table";
 import { DecisionSheet } from "@/components/tg/decision-detail";
 import { useTokenGate } from "@/lib/tokengate/store";
-import { formatDate, parseToMinor } from "@/lib/tokengate/format";
+import { formatDate, formatMoney, parseToMinor } from "@/lib/tokengate/format";
 import { statusMeta } from "@/lib/tokengate/status";
 import type { Category, Currency, DisplayStatus, Invoice } from "@/lib/tokengate/types";
 
@@ -512,6 +512,20 @@ function UploadDialog({
             </div>
           </div>
           {field("amount")}
+          {f.currency !== "USD" &&
+            (() => {
+              const m = parseToMinor(f.amount);
+              if (!m || m <= 0) return null;
+              const rate = seed.fx[f.currency] ?? 1;
+              const usdMinor = Math.round(m / rate);
+              return (
+                <p className="-mt-1 font-mono text-xs text-primary">
+                  Equivalencia: {formatMoney({ amountMinor: m, currency: f.currency })} ≈{" "}
+                  <b>{formatMoney({ amountMinor: usdMinor, currency: "USD" })}</b> (tasa: 1 USD ={" "}
+                  {rate.toLocaleString("en-US")} {f.currency})
+                </p>
+              );
+            })()}
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="due">Fecha límite</Label>

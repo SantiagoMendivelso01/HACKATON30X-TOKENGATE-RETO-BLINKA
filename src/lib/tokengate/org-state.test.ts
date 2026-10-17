@@ -92,6 +92,21 @@ describe("persistence", () => {
     expect(reloaded.clock).toBeGreaterThanOrEqual(state.clock);
   });
 
+  it("persists organization config, FX rates, suppliers, and agents across reloads", () => {
+    const initial = stateFromRows(emptyRows());
+    const customConfig = {
+      ...initial.config,
+      name: "Blinka LatAm Corp.",
+      jurisdiction: "Delaware, US",
+      fx: { ...initial.config.fx, COP: 4200 },
+    };
+    const { state, saved } = run([{ type: "saveConfig", config: customConfig, summary: "Update" }]);
+    const reloaded = stateFromRows(viaDb(saved));
+    expect(reloaded.config.name).toBe("Blinka LatAm Corp.");
+    expect(reloaded.config.fx.COP).toBe(4200);
+    expect(reloaded.config).toEqual(state.config);
+  });
+
   it("keeps new events after the stored ones even if the server clock is behind", () => {
     const future = "2999-01-01T00:00:00.000Z";
     const s = stateFromRows({

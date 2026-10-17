@@ -123,8 +123,12 @@ function useStoreValue(rows: Rows, mode: StorageMode) {
   );
 
   return useMemo(() => {
-    const seed = ORG;
     const o = state;
+    const seed: OrgSeed = {
+      id: ORG.id,
+      ...o.config,
+      policy: o.policy,
+    };
     const ledger = ledgerFor(seed, o);
 
     const evaluated: EvaluatedSubject[] = ledger.entries.map((e) => ({
@@ -258,7 +262,10 @@ function useStoreValue(rows: Rows, mode: StorageMode) {
       },
       savePolicy: (policy: Policy, summary: string) =>
         dispatch({ type: "savePolicy", policy, summary }),
+      saveConfig: (config: OrgState["config"], summary: string) =>
+        dispatch({ type: "saveConfig", config, summary }),
       addInvoice: (invoice: Invoice) => dispatch({ type: "addInvoice", invoice }),
+      addPurchase: (purchase: Purchase) => dispatch({ type: "addPurchase", purchase }),
       logEvent: (event: Omit<AuditEvent, "id" | "at">) => dispatch({ type: "audit", event }),
     };
   }, [state, mode, dispatch]);

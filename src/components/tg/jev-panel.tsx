@@ -16,6 +16,15 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useTokenGate } from "@/lib/tokengate/store";
+import type { Currency } from "@/lib/tokengate/types";
 import { Panel } from "@/components/tg/primitives";
 import {
   evaluateJevLocally,
@@ -150,13 +159,21 @@ const PRESETS: { label: string; description: string; input: JevDecisionInput }[]
   },
 ];
 
+const JEV_CURRENCIES: Currency[] = ["USD", "COP", "EUR", "MXN", "BRL", "ARS"];
+
 export function JevPanel() {
+  const { seed } = useTokenGate();
   const [form, setForm] = useState<JevDecisionInput>(PRESETS[0]!.input);
   const [evaluating, setEvaluating] = useState(false);
   const [activePresetIndex, setActivePresetIndex] = useState<number | null>(0);
   const [result, setResult] = useState<JevDecisionEvaluation>(() =>
     evaluateJevLocally(PRESETS[0]!.input),
   );
+
+  const toUsd = (amt: number, cur: Currency): number => {
+    const rate = seed.fx[cur] ?? 1;
+    return Number((amt / rate).toFixed(2));
+  };
 
   const runEvaluation = async (inputToRun: JevDecisionInput = form) => {
     setEvaluating(true);
@@ -239,7 +256,7 @@ export function JevPanel() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_92px]">
             <div>
               <Label className="text-xs">Proveedor</Label>
               <Input
@@ -252,17 +269,57 @@ export function JevPanel() {
               />
             </div>
             <div>
-              <Label className="text-xs">Monto (USD)</Label>
+              <Label className="text-xs">Monto ({form.currency})</Label>
               <Input
                 type="number"
-                value={form.amountUsd}
+                value={form.amount}
                 onChange={(e) => {
                   setActivePresetIndex(null);
                   const v = parseFloat(e.target.value) || 0;
-                  setForm({ ...form, amount: v, amountUsd: v });
+                  setForm({
+                    ...form,
+                    amount: v,
+                    amountUsd: toUsd(v, form.currency),
+                  });
                 }}
-                className="mt-1 h-9 text-sm"
+                className="mt-1 h-9 text-sm font-mono"
               />
+              {form.currency !== "USD" && (
+                <p className="mt-1 font-mono text-[11px] text-primary">
+                  ≈ USD{" "}
+                  {form.amountUsd.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{" "}
+                  (1 USD = {seed.fx[form.currency]} {form.currency})
+                </p>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs">Moneda</Label>
+              <Select
+                value={form.currency}
+                onValueChange={(v) => {
+                  setActivePresetIndex(null);
+                  const cur = v as Currency;
+                  setForm({
+                    ...form,
+                    currency: cur,
+                    amountUsd: toUsd(form.amount, cur),
+                  });
+                }}
+              >
+                <SelectTrigger className="mt-1 h-9 text-xs font-mono">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {JEV_CURRENCIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

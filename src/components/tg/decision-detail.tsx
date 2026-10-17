@@ -91,7 +91,7 @@ function highlight(raw: string) {
 }
 
 export function DecisionDetail({ subjectId }: { subjectId: string }) {
-  const { byId, review, agentName } = useTokenGate();
+  const { byId, review, agentName, seed } = useTokenGate();
   const [showAll, setShowAll] = useState(false);
   const [pending, setPending] = useState<HumanAction | null>(null);
   const [note, setNote] = useState("");
@@ -114,7 +114,10 @@ export function DecisionDetail({ subjectId }: { subjectId: string }) {
       <span key="a">
         <Money value={s.amount} />
         {s.amount.currency !== "USD" && (
-          <span className="ml-1 text-xs text-muted-foreground">≈ {formatBase(e.baseMinor)}</span>
+          <span className="ml-1 text-xs text-muted-foreground">
+            ≈ {formatBase(e.baseMinor, { exact: true })} (1 USD = {seed.fx[s.amount.currency]}{" "}
+            {s.amount.currency})
+          </span>
         )}
       </span>,
     ],

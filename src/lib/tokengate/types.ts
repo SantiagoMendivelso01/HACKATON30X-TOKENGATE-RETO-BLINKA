@@ -203,3 +203,6 @@ export type OrgSeed = {
   suppliers: Supplier[];
   agents: Agent[];
 };
+
+/** Mutable, persistent company configuration (name, jurisdiction, inbox, user, FX, suppliers, agents). */
+export type OrgConfig = Omit<OrgSeed, "id" | "policy">;
