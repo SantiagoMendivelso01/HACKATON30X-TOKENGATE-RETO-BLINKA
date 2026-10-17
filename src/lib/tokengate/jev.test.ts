@@ -190,9 +190,10 @@ describe("JEV TypeSafe Decision Engine — Reto Blinka", () => {
 
     const questions = buildJevQuestions();
     expect(questions.action.type).toBe("choice");
-    expect(questions.action.criteria.aprobar).toBeDefined();
-    expect(questions.action.criteria.escalar).toBeDefined();
-    expect(questions.action.criteria.frenar).toBeDefined();
+    expect(questions.action.criteria["aprobar"]).toBeDefined();
+    expect(questions.action.criteria["escalar"]).toBeDefined();
+    expect(questions.action.criteria["frenar"]).toBeDefined();
+
   });
 
   it("Caso 9: Precedencia — Frena si supera límite absoluto incluso si también es un proveedor nuevo", () => {
