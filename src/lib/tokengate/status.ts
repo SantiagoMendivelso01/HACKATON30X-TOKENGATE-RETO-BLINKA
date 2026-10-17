@@ -68,11 +68,20 @@ export const ruleMeta: Record<
 };
 
 export const toneClasses: Record<StatusMeta["tone"], string> = {
-  success: "bg-success/12 text-success border-success/25",
-  destructive: "bg-destructive/10 text-destructive border-destructive/25",
-  warning: "bg-warning/15 text-warning-foreground border-warning/35 dark:text-warning",
-  info: "bg-secondary/10 text-secondary border-secondary/25",
-  neutral: "bg-muted text-muted-foreground border-border",
+  success: "bg-success/8 text-success border-transparent",
+  destructive: "bg-destructive/8 text-destructive border-transparent",
+  warning: "bg-warning/12 text-warning-foreground border-transparent dark:text-warning",
+  info: "bg-primary/8 text-primary border-transparent",
+  neutral: "bg-muted text-muted-foreground border-transparent",
+};
+
+/** Solid dot color per tone, for compact status pills. */
+export const toneDot: Record<StatusMeta["tone"], string> = {
+  success: "bg-success",
+  destructive: "bg-destructive",
+  warning: "bg-warning",
+  info: "bg-primary",
+  neutral: "bg-muted-foreground/60",
 };
 
 export function displayStatus(outcome: DecisionOutcome, review?: HumanReview): DisplayStatus {

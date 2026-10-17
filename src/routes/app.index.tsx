@@ -30,7 +30,7 @@ export const Route = createFileRoute("/app/")({
 const OUT_COLOR: Record<DecisionOutcome, string> = {
   authorized: "var(--color-success)",
   requires_approval: "var(--color-warning)",
-  needs_information: "oklch(0.8 0.1 85)",
+  needs_information: "var(--color-chart-5)",
   blocked: "var(--color-destructive)",
 };
 const OUT_LABEL: Record<DecisionOutcome, string> = {
@@ -379,8 +379,8 @@ function Dashboard() {
           className={cn(
             "relative flex flex-col overflow-hidden rounded-2xl border p-6 shadow-soft",
             unsafe
-              ? "border-destructive bg-gradient-to-b from-card to-destructive/10"
-              : "border-success/30 bg-gradient-to-b from-card to-success/10",
+              ? "border-destructive/40 bg-gradient-to-b from-card to-destructive/6"
+              : "border-border/70 bg-gradient-to-b from-card to-success/5",
           )}
         >
           <p className="eyebrow">Seguridad</p>

@@ -1,7 +1,17 @@
 import type { ReactNode } from "react";
-import { FlaskConical, Info } from "lucide-react";
+import {
+  Bot,
+  FileText,
+  FlaskConical,
+  Image,
+  Info,
+  Mail,
+  MessageSquare,
+  Upload,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ruleMeta, statusMeta, toneClasses } from "@/lib/tokengate/status";
+import { ruleMeta, statusMeta, toneClasses, toneDot } from "@/lib/tokengate/status";
 import { moneyParts } from "@/lib/tokengate/format";
 import type { Channel, DisplayStatus, Money as MoneyT, RuleStatus } from "@/lib/tokengate/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,12 +29,12 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium",
         toneClasses[m.tone],
         className,
       )}
     >
-      <m.icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", toneDot[m.tone])} aria-hidden />
       {full ? m.label : m.short}
     </span>
   );
@@ -171,13 +181,13 @@ export function Money({ value, className }: { value: MoneyT; className?: string 
   );
 }
 
-const channelLabel: Record<Channel, string> = {
-  email: "@",
-  pdf: "PDF",
-  chat: "MSG",
-  image: "IMG",
-  agent: "AGT",
-  upload: "UP",
+const channelIcon: Record<Channel, LucideIcon> = {
+  email: Mail,
+  pdf: FileText,
+  chat: MessageSquare,
+  image: Image,
+  agent: Bot,
+  upload: Upload,
 };
 const channelName: Record<Channel, string> = {
   email: "Correo",
@@ -190,12 +200,13 @@ const channelName: Record<Channel, string> = {
 
 /** Square channel icon like Blinka transaction rows. */
 export function ChannelIcon({ channel }: { channel: Channel }) {
+  const Icon = channelIcon[channel];
   return (
     <span
       title={channelName[channel]}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-border bg-background font-mono text-[10px] font-medium text-muted-foreground"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-primary/8 text-primary"
     >
-      {channelLabel[channel]}
+      <Icon className="h-[18px] w-[18px]" aria-label={channelName[channel]} />
     </span>
   );
 }
