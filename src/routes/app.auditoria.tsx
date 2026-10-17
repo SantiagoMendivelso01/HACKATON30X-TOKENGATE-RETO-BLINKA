@@ -62,6 +62,13 @@ function download(name: string, rows: (string | number)[][]) {
   a.click();
 }
 
+const ACTOR_LABEL = {
+  all: "Cualquier origen",
+  agent: "Agentes",
+  human: "Personas",
+  system: "Sistema",
+} as const;
+
 function Auditoria() {
   const { trail, brokenAt, seed, mode } = useTokenGate();
   const [type, setType] = useState<"all" | AuditEvent["type"]>("all");
@@ -136,7 +143,9 @@ function Auditoria() {
         <div className="grid gap-2 border-b border-border p-3 sm:grid-cols-2">
           <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
             <SelectTrigger className="h-10 rounded-xl" aria-label="Tipo de evento">
-              <SelectValue />
+              <SelectValue>
+                {type === "all" ? "Todos los eventos" : typeMeta[type].label}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los eventos</SelectItem>
@@ -149,7 +158,7 @@ function Auditoria() {
           </Select>
           <Select value={actor} onValueChange={(v) => setActor(v as typeof actor)}>
             <SelectTrigger className="h-10 rounded-xl" aria-label="Iniciado por">
-              <SelectValue />
+              <SelectValue>{ACTOR_LABEL[actor]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Cualquier origen</SelectItem>

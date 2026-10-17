@@ -1,7 +1,17 @@
-import type { ReactNode } from "react";
-import { FlaskConical, Info } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Bot,
+  FileText,
+  FlaskConical,
+  Image,
+  Info,
+  Mail,
+  MessageSquare,
+  Upload,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ruleMeta, statusMeta, toneClasses } from "@/lib/tokengate/status";
+import { ruleMeta, statusMeta, toneClasses, toneDot } from "@/lib/tokengate/status";
 import { moneyParts } from "@/lib/tokengate/format";
 import type { Channel, DisplayStatus, Money as MoneyT, RuleStatus } from "@/lib/tokengate/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,12 +29,12 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium",
         toneClasses[m.tone],
         className,
       )}
     >
-      <m.icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", toneDot[m.tone])} aria-hidden />
       {full ? m.label : m.short}
     </span>
   );
@@ -159,9 +169,51 @@ export function NoMoneyNotice({ className }: { className?: string }) {
   );
 }
 
+/** Counts from the previous value (0 on first render) up to `target`, easing out. */
+function useCountUp(target: number, enabled = true, ms = 800): number {
+  const [v, setV] = useState(0);
+  const from = useRef(0);
+  useEffect(() => {
+    if (!enabled) return;
+    const start = from.current;
+    from.current = target;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setV(target);
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / ms);
+      setV(start + (target - start) * (1 - (1 - p) ** 3));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, enabled, ms]);
+  return enabled ? v : target;
+}
+
+/** A whole number that counts up when it appears or changes. */
+export function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
+  return (
+    <span className="tabular">
+      {Math.round(useCountUp(value))}
+      {suffix}
+    </span>
+  );
+}
+
 /** Blinka-style amount: small currency code, whole number, muted cents. */
-export function Money({ value, className }: { value: MoneyT; className?: string }) {
-  const p = moneyParts(value);
+export function Money({
+  value,
+  className,
+  animate = false,
+}: {
+  value: MoneyT;
+  className?: string;
+  /** Count up to the amount when it appears or changes. */
+  animate?: boolean;
+}) {
+  const shown = useCountUp(value.amountMinor, animate);
+  const p = moneyParts({ ...value, amountMinor: Math.round(shown) });
   return (
     <span className={cn("money whitespace-nowrap tabular", className)}>
       <span className="cur">{p.cur}</span>
@@ -171,13 +223,13 @@ export function Money({ value, className }: { value: MoneyT; className?: string 
   );
 }
 
-const channelLabel: Record<Channel, string> = {
-  email: "@",
-  pdf: "PDF",
-  chat: "MSG",
-  image: "IMG",
-  agent: "AGT",
-  upload: "UP",
+const channelIcon: Record<Channel, LucideIcon> = {
+  email: Mail,
+  pdf: FileText,
+  chat: MessageSquare,
+  image: Image,
+  agent: Bot,
+  upload: Upload,
 };
 const channelName: Record<Channel, string> = {
   email: "Correo",
@@ -190,12 +242,13 @@ const channelName: Record<Channel, string> = {
 
 /** Square channel icon like Blinka transaction rows. */
 export function ChannelIcon({ channel }: { channel: Channel }) {
+  const Icon = channelIcon[channel];
   return (
     <span
       title={channelName[channel]}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-border bg-background font-mono text-[10px] font-medium text-muted-foreground"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-primary/8 text-primary"
     >
-      {channelLabel[channel]}
+      <Icon className="h-[18px] w-[18px]" aria-label={channelName[channel]} />
     </span>
   );
 }

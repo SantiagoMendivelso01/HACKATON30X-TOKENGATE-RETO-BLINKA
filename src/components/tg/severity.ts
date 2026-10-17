@@ -1,9 +1,10 @@
-import { AlertTriangle, Circle, Diamond } from "lucide-react";
+import { AlertCircle, AlertTriangle, Info } from "lucide-react";
 import type { AlertSeverity } from "@/lib/tokengate/types";
 
+// Severidad con los mismos tonos de los estados: rojo ladrillo, ocre y pizarra.
 export const sevMeta: Record<
   AlertSeverity,
-  { label: string; icon: typeof Circle; text: string; bar: string }
+  { label: string; icon: typeof Info; text: string; bar: string }
 > = {
   critical: {
     label: "Crítica",
@@ -13,9 +14,9 @@ export const sevMeta: Record<
   },
   high: {
     label: "Alta",
-    icon: Circle,
-    text: "text-[oklch(0.58_0.16_45)]",
-    bar: "bg-[oklch(0.62_0.16_45)]",
+    icon: AlertCircle,
+    text: "text-warning-foreground dark:text-warning",
+    bar: "bg-warning",
   },
-  medium: { label: "Media", icon: Diamond, text: "text-warning-foreground", bar: "bg-warning" },
+  medium: { label: "Media", icon: Info, text: "text-muted-foreground", bar: "bg-chart-5" },
 };

@@ -59,7 +59,9 @@ function AppLayout() {
               <ThemeToggle />
             </header>
             <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
-              <Outlet />
+              <div key={path} className="page-enter">
+                <Outlet />
+              </div>
             </main>
           </SidebarInset>
         </div>

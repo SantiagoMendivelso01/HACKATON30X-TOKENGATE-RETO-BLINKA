@@ -20,7 +20,8 @@
 
 @theme inline {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, monospace;
+  /* Sin monoespaciada: números y códigos en Inter con cifras de ancho fijo. */
+  --font-mono: "Inter", ui-sans-serif, system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -89,18 +90,19 @@
   --border: oklch(0.895 0.004 106); /* #dedfdc */
   --input: oklch(0.86 0.006 106);
   --ring: oklch(0.488 0.208 268);
-  --destructive: oklch(0.51 0.18 27); /* #b3261e */
+  /* Estados en la gama del azul Blinka; solo lo bloqueado resalta en rojo. */
+  --destructive: oklch(0.62 0.2 23); /* #e5484d bloqueada */
   --destructive-foreground: oklch(1 0 0);
-  --success: oklch(0.49 0.1 167); /* #007456 */
+  --success: oklch(0.488 0.208 268); /* #2a4bd0 autorizada */
   --success-foreground: oklch(1 0 0);
-  --warning: oklch(0.72 0.14 73); /* #d99a1c */
-  --warning-foreground: oklch(0.42 0.09 65); /* #9a5b00 */
+  --warning: oklch(0.68 0.13 272); /* #7c93e8 escalada */
+  --warning-foreground: oklch(0.5 0.14 272); /* texto de escalada sobre fondo claro */
   --surface: oklch(1 0 0);
   --chart-1: oklch(0.488 0.208 268);
-  --chart-2: oklch(0.49 0.1 167);
-  --chart-3: oklch(0.72 0.14 73);
-  --chart-4: oklch(0.51 0.18 27);
-  --chart-5: oklch(0.7 0.02 260);
+  --chart-2: oklch(0.488 0.208 268);
+  --chart-3: oklch(0.68 0.13 272);
+  --chart-4: oklch(0.62 0.2 23);
+  --chart-5: oklch(0.83 0.065 274); /* #b4c2f2 pedir info */
   --sidebar-background: oklch(0.973 0.004 106);
   --sidebar: var(--sidebar-background);
   --sidebar-foreground: oklch(0.52 0.016 268);
@@ -132,18 +134,18 @@
   --border: oklch(0.31 0.02 265);
   --input: oklch(0.38 0.02 265);
   --ring: oklch(0.66 0.16 268);
-  --destructive: oklch(0.68 0.17 25);
+  --destructive: oklch(0.68 0.19 23);
   --destructive-foreground: oklch(0.16 0.02 265);
-  --success: oklch(0.72 0.12 165);
-  --success-foreground: oklch(0.16 0.02 165);
-  --warning: oklch(0.8 0.13 78);
-  --warning-foreground: oklch(0.85 0.12 80);
+  --success: oklch(0.66 0.16 268);
+  --success-foreground: oklch(0.16 0.02 265);
+  --warning: oklch(0.76 0.1 272);
+  --warning-foreground: oklch(0.82 0.08 272);
   --surface: oklch(0.22 0.022 265);
   --chart-1: oklch(0.66 0.16 268);
-  --chart-2: oklch(0.72 0.12 165);
-  --chart-3: oklch(0.8 0.13 78);
-  --chart-4: oklch(0.68 0.17 25);
-  --chart-5: oklch(0.6 0.02 260);
+  --chart-2: oklch(0.66 0.16 268);
+  --chart-3: oklch(0.76 0.1 272);
+  --chart-4: oklch(0.68 0.19 23);
+  --chart-5: oklch(0.5 0.07 272);
   --sidebar-background: oklch(0.18 0.02 265);
   --sidebar: var(--sidebar-background);
   --sidebar-foreground: oklch(0.72 0.015 265);
@@ -172,14 +174,18 @@
     font-family: var(--font-sans);
     font-feature-settings: "tnum" 0;
   }
-  .tabular {
+  .tabular,
+  .font-mono {
     font-variant-numeric: tabular-nums;
+    /* body apaga "tnum"; font-feature-settings gana sobre font-variant, así que se reactiva aquí. */
+    font-feature-settings: "tnum" 1;
   }
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
       transition-duration: 0.01ms !important;
     }
   }
@@ -195,6 +201,10 @@
   h2,
   h3 {
     letter-spacing: -0.03em;
+  }
+  /* Iconos de trazo fino, como en blinka.co. */
+  svg.lucide {
+    stroke-width: 1.5;
   }
 }
 @layer components {
@@ -220,5 +230,88 @@
   }
   .money .cents {
     opacity: 0.38;
+  }
+}
+
+/* ---------- Movimiento ---------- */
+/* Suave y corto: el contenido sube un poco al entrar y las barras crecen desde cero. */
+@layer components {
+  .page-enter > * {
+    animation: tg-rise 420ms var(--ease-out-soft) both;
+  }
+  .page-enter > :nth-child(2) {
+    animation-delay: 50ms;
+  }
+  .page-enter > :nth-child(3) {
+    animation-delay: 100ms;
+  }
+  .page-enter > :nth-child(4) {
+    animation-delay: 150ms;
+  }
+  .page-enter > :nth-child(5) {
+    animation-delay: 200ms;
+  }
+  .page-enter > :nth-child(n + 6) {
+    animation-delay: 250ms;
+  }
+  /* Tarjetas de una grilla, una tras otra. */
+  .stagger > * {
+    animation: tg-rise 420ms var(--ease-out-soft) both;
+  }
+  .stagger > :nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .stagger > :nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .stagger > :nth-child(4) {
+    animation-delay: 180ms;
+  }
+  .stagger > :nth-child(n + 5) {
+    animation-delay: 240ms;
+  }
+  .bar-grow {
+    transform-origin: left center;
+    animation: tg-grow-x 800ms var(--ease-out-soft) 150ms both;
+    transition:
+      width 500ms var(--ease-out-soft),
+      flex-grow 500ms var(--ease-out-soft);
+  }
+  .bar-grow-y {
+    transform-box: fill-box;
+    transform-origin: bottom;
+    animation: tg-grow-y 700ms var(--ease-out-soft) 150ms both;
+  }
+  /* Tarjeta que se puede abrir: se eleva un poco al pasar el mouse. */
+  .lift {
+    transition:
+      transform 200ms var(--ease-out-soft),
+      box-shadow 200ms var(--ease-out-soft),
+      border-color 200ms;
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 2px oklch(0.262 0.042 265 / 4%),
+      0 18px 40px -20px oklch(0.262 0.042 265 / 28%);
+  }
+}
+:root {
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes tg-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes tg-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes tg-grow-y {
+  from {
+    transform: scaleY(0);
   }
 }

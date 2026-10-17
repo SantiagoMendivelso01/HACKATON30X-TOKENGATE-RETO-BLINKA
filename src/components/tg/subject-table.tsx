@@ -49,7 +49,9 @@ export function SubjectTable({
     const s = e.subject;
     switch (c) {
       case "reference":
-        return <span className="font-mono text-xs font-medium">{s.reference}</span>;
+        return (
+          <span className="whitespace-nowrap font-mono text-xs font-medium">{s.reference}</span>
+        );
       case "supplier":
         return (
           <span className="flex min-w-0 items-center gap-3">
@@ -143,7 +145,7 @@ export function SubjectTable({
                 tabIndex={0}
                 onClick={() => onOpen(e.subject.id)}
                 onKeyDown={(ev) => ev.key === "Enter" && onOpen(e.subject.id)}
-                className="cursor-pointer border-b border-border/70 last:border-0 hover:bg-background/70 focus-visible:bg-muted focus-visible:outline-none"
+                className="cursor-pointer border-b border-border/70 transition-colors last:border-0 hover:bg-background/70 focus-visible:bg-muted focus-visible:outline-none"
               >
                 {columns.map((c) => (
                   <td
