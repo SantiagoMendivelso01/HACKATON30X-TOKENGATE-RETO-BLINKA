@@ -333,11 +333,12 @@ export function DecisionDetail({ subjectId }: { subjectId: string }) {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => {
-                  review(s.id, pending, note.trim() || undefined);
-                  toast.success(confirmCopy[pending].toast);
+                onClick={async () => {
+                  const action = pending;
                   setNote("");
                   setPending(null);
+                  if (await review(s.id, action, note.trim() || undefined))
+                    toast.success(confirmCopy[action].toast);
                 }}
               >
                 {confirmCopy[pending].cta}

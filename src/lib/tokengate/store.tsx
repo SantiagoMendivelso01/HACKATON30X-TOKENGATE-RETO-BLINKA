@@ -1,10 +1,31 @@
-// In-memory store (React context). Starts empty and resets on reload until persistence lands.
-import { createContext, useContext, useMemo, useReducer, type ReactNode } from "react";
+// Store (React context). State lives in Supabase when the server has its keys (db.functions.ts);
+// each action is saved first and only shows once the database confirms it. Without keys it
+// runs in memory and resets on reload.
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { runLedger, type Ledger, type LedgerState } from "./decision-engine";
 import { ORG } from "./org";
 import { displayStatus, needsAttention } from "./status";
 import { chain, verifyChain, type ChainedEvent } from "./hash";
 import { formatBase, formatMoney } from "./format";
+import {
+  apply,
+  stateFromRows,
+  type Action,
+  type OrgState,
+  type Rows,
+  type State,
+} from "./org-state";
+import { saveWrites, type StorageMode } from "./db.functions";
 import type {
   AlertSeverity,
   AnySubject,
@@ -20,127 +41,6 @@ import type {
   Policy,
   Purchase,
 } from "./types";
-
-type OrgState = {
-  invoices: Invoice[];
-  purchases: Purchase[];
-  policy: Policy;
-  reviews: Record<string, HumanReview>;
-  humanLog: DecisionRecord[];
-  audit: AuditEvent[];
-};
-
-type State = OrgState & { clock: number };
-
-type Action =
-  | {
-      type: "review";
-      subjectId: string;
-      action: HumanAction;
-      note?: string | undefined;
-      result: DecisionResult;
-    }
-  | { type: "savePolicy"; policy: Policy; summary: string }
-  | { type: "addInvoice"; invoice: Invoice }
-  | { type: "audit"; event: Omit<AuditEvent, "id" | "at"> };
-
-const initialState = (): State => ({
-  invoices: [],
-  purchases: [],
-  policy: ORG.policy,
-  reviews: {},
-  humanLog: [],
-  audit: [],
-  clock: Date.now(),
-});
-
-const actionLabel: Record<HumanAction, string> = {
-  approved: "aprobada: pago enviado al sandbox (simulado, sin movimiento de dinero)",
-  rejected: "rechazada",
-  info_requested: "devuelta: se solicitó más información",
-};
-
-function reducer(state: State, a: Action): State {
-  // Never go back in time, even if two actions land in the same millisecond.
-  const clock = Math.max(Date.now(), state.clock + 1);
-  const at = new Date(clock).toISOString();
-  const o = state;
-  const user = ORG.user.name;
-  const put = (next: Partial<OrgState>): State => ({ ...state, ...next, clock });
-  const event = (e: Omit<AuditEvent, "id" | "at">, offset = 0): AuditEvent => ({
-    ...e,
-    id: `au-${clock}-${offset}`,
-    at: new Date(clock + offset * 1000).toISOString(),
-  });
-
-  switch (a.type) {
-    case "review": {
-      const subject = [...o.invoices, ...o.purchases].find((s) => s.id === a.subjectId);
-      const ref = subject?.reference ?? a.subjectId;
-      return put({
-        reviews: { ...o.reviews, [a.subjectId]: { action: a.action, by: user, at, note: a.note } },
-        humanLog: [
-          {
-            id: `hd-${clock}`,
-            subjectId: a.subjectId,
-            at,
-            actor: "human",
-            actorName: user,
-            result: a.result,
-            humanAction: a.action,
-            note: a.note,
-          },
-          ...o.humanLog,
-        ],
-        audit: [
-          event({
-            type: "human_review",
-            actor: user,
-            actorKind: "human",
-            summary: `${ref} ${actionLabel[a.action]}`,
-            reason: a.note || undefined,
-            subjectId: a.subjectId,
-          }),
-          ...o.audit,
-        ],
-      });
-    }
-    case "savePolicy": {
-      const [maj, min] = o.policy.version.slice(1).split(".").map(Number);
-      const policy = { ...a.policy, version: `v${maj}.${(min ?? 0) + 1}` };
-      return put({
-        policy,
-        audit: [
-          event({
-            type: "policy_change",
-            actor: user,
-            actorKind: "human",
-            summary: `Política actualizada a ${policy.version}`,
-            reason: a.summary,
-          }),
-          ...o.audit,
-        ],
-      });
-    }
-    case "addInvoice":
-      return put({
-        invoices: [...o.invoices, { ...a.invoice, receivedAt: a.invoice.receivedAt || at }],
-        audit: [
-          event({
-            type: "invoice_upload",
-            actor: user,
-            actorKind: "human",
-            summary: `Factura ${a.invoice.reference} cargada`,
-            reason: `${a.invoice.supplier} · ${formatMoney(a.invoice.amount)}`,
-            subjectId: a.invoice.id,
-          }),
-          ...o.audit,
-        ],
-      });
-    case "audit":
-      return put({ audit: [event(a.event), ...o.audit] });
-  }
-}
 
 export type EvaluatedSubject<T extends DecisionSubject = AnySubject> = {
   subject: T;
@@ -188,8 +88,39 @@ function ledgerFor(
   );
 }
 
-function useStoreValue() {
-  const [state, dispatch] = useReducer(reducer, undefined, initialState);
+function useStoreValue(rows: Rows, mode: StorageMode) {
+  const [state, setState] = useState<State>(() => stateFromRows(rows));
+  const latest = useRef(state);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const save = useServerFn(saveWrites);
+
+  /** Saves what the action adds and only then shows it. Actions run one at a time, in order. */
+  const dispatch = useCallback(
+    (action: Action): Promise<boolean> => {
+      const run = async () => {
+        const { next, writes } = apply(latest.current, action);
+        if (mode === "supabase") {
+          try {
+            const res = await save({ data: writes });
+            if (!res.ok) {
+              toast.error(res.error);
+              return false;
+            }
+          } catch {
+            toast.error("No hay conexión con el servidor. No se aplicó ningún cambio.");
+            return false;
+          }
+        }
+        latest.current = next;
+        setState(next);
+        return true;
+      };
+      const p = queue.current.then(run, run);
+      queue.current = p.catch(() => undefined);
+      return p;
+    },
+    [mode, save],
+  );
 
   return useMemo(() => {
     const seed = ORG;
@@ -318,16 +249,19 @@ function useStoreValue() {
           }))
           .filter((d) => d.before !== d.after);
       },
-      review: (subjectId: string, action: HumanAction, note?: string) => {
+      /** Where actions are saved. */
+      mode,
+      // Each action resolves to true once saved, or false (with an error toast) if nothing changed.
+      review: async (subjectId: string, action: HumanAction, note?: string) => {
         const e = byId.get(subjectId);
-        if (e) dispatch({ type: "review", subjectId, action, note, result: e.result });
+        return e ? dispatch({ type: "review", subjectId, action, note, result: e.result }) : false;
       },
       savePolicy: (policy: Policy, summary: string) =>
         dispatch({ type: "savePolicy", policy, summary }),
       addInvoice: (invoice: Invoice) => dispatch({ type: "addInvoice", invoice }),
       logEvent: (event: Omit<AuditEvent, "id" | "at">) => dispatch({ type: "audit", event }),
     };
-  }, [state]);
+  }, [state, mode, dispatch]);
 }
 
 type Store = ReturnType<typeof useStoreValue>;
@@ -335,8 +269,17 @@ type Store = ReturnType<typeof useStoreValue>;
 const g = globalThis as unknown as { __tokengateCtx?: React.Context<Store | null> };
 const Ctx = (g.__tokengateCtx ??= createContext<Store | null>(null));
 
-export function TokenGateProvider({ children }: { children: ReactNode }) {
-  const value = useStoreValue();
+export function TokenGateProvider({
+  rows,
+  mode,
+  children,
+}: {
+  /** What the database already has (from the /app loader). */
+  rows: Rows;
+  mode: StorageMode;
+  children: ReactNode;
+}) {
+  const value = useStoreValue(rows, mode);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

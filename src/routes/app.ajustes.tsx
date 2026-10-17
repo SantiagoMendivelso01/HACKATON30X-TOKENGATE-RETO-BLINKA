@@ -34,7 +34,7 @@ export const Route = createFileRoute("/app/ajustes")({
 });
 
 function Ajustes() {
-  const { logEvent, seed } = useTokenGate();
+  const { logEvent, seed, mode } = useTokenGate();
   const ORG_NAME = seed.name;
   const CURRENT_USER = seed.user.name;
   const [theme, setTheme] = useThemeState();
@@ -43,20 +43,20 @@ function Ajustes() {
   const [orgError, setOrgError] = useState("");
   const [notif, setNotif] = useState({ approvals: true, blocked: true, weekly: false });
 
-  const save = () => {
+  const save = async () => {
     if (org.trim().length < 2) {
       setOrgError("El nombre debe tener al menos 2 caracteres.");
       return;
     }
     setOrgError("");
-    logEvent({
+    const saved = await logEvent({
       type: "settings",
       actor: CURRENT_USER,
       actorKind: "human",
       summary: "Ajustes de organización actualizados",
       reason: `Moneda por defecto ${currency}.`,
     });
-    toast.success("Ajustes guardados.");
+    if (saved) toast.success("Ajustes guardados.");
   };
 
   return (
@@ -144,13 +144,21 @@ function Ajustes() {
         </Panel>
         <Panel title="Datos">
           <p className="text-sm text-muted-foreground">
-            Por ahora los datos se guardan solo en memoria y se pierden al recargar. El agente
-            pagador no está conectado a bancos: los pagos van a un sandbox.
+            {mode === "supabase"
+              ? "Facturas, revisiones, políticas y auditoría se guardan en Supabase. La auditoría es de solo escritura: no se puede vaciar desde la app."
+              : "Sin Supabase configurado: los datos se guardan solo en memoria y se pierden al recargar."}{" "}
+            El agente pagador no está conectado a bancos: los pagos van a un sandbox.
           </p>
-          <Button variant="outline" className="mt-4 h-10" onClick={() => window.location.reload()}>
-            <RotateCcw className="h-4 w-4" />
-            Vaciar datos
-          </Button>
+          {mode === "memory" && (
+            <Button
+              variant="outline"
+              className="mt-4 h-10"
+              onClick={() => window.location.reload()}
+            >
+              <RotateCcw className="h-4 w-4" />
+              Vaciar datos
+            </Button>
+          )}
         </Panel>
       </div>
     </>

@@ -58,9 +58,19 @@ Cambiar la política vuelve a correr el ledger completo. Así funciona la simula
 - Los límites de la política están en **USD**. Cada organización trae una tabla de cambio (`fx`: unidades por 1 USD) y el motor convierte cada operación con `toBaseMinor`.
 - Para leer importes escritos por una persona se usa `parseToMinor`, que acepta tanto `1.250,50` como `1,250.50`.
 
+## Persistencia (Supabase)
+
+- Se guardan solo **entradas**: facturas y compras, revisiones humanas, versiones de la política y eventos de auditoría. Las decisiones del agente no se guardan: el motor las recalcula siempre a partir de esas entradas.
+- Esquema en `supabase/migrations/` (tablas con prefijo `pagador_`, porque el proyecto comparte `public` con otra app). Cada fila guarda el objeto completo en `payload` (igual a `types.ts`) y copia algunos campos en columnas para consultas. Se aplica pegándolo en el SQL Editor de Supabase.
+- `org-state.ts` (puro) aplica cada acción y devuelve el estado siguiente **y las filas que agrega**; `stateFromRows` reconstruye el estado al cargar.
+- `db.functions.ts` es lo único que habla con Supabase, con `SUPABASE_URL` y `SUPABASE_SERVICE_KEY` (solo en el servidor). `loadOrgState` carga todo en el loader de `/app`; `saveWrites` guarda lo de una acción en una sola transacción (`pagador_save_writes`).
+- Cada acción espera a Supabase: la pantalla cambia solo cuando la base confirma. Si falla, aparece un aviso y no cambia nada.
+- Revisiones, políticas y auditoría son de solo escritura: un trigger rechaza `UPDATE`, `DELETE` y `TRUNCATE`. RLS está activado sin políticas, así que la clave pública no lee nada.
+- Sin las claves, la app funciona en memoria (el encabezado dice “Sin guardar”) y se pierde al recargar.
+
 ## Estado y auditoría (`store.tsx`)
 
-- Estado en memoria con `useReducer`. Arranca vacío (sin facturas, compras ni auditoría) y se pierde al recargar hasta que haya persistencia.
+- El store parte de lo que devolvió el loader de `/app` y ejecuta las acciones una a una, en orden.
 - La organización, su usuario, agentes, proveedores, tabla de cambio y política inicial viven en `org.ts`. Hoy son valores por defecto; las integraciones reales los reemplazan.
 - El store expone el ledger, las listas evaluadas, las alertas y el **registro de auditoría**: eventos humanos y del sistema, más cada decisión del agente y cada pago, en orden cronológico y encadenados con `hash.ts`. `verifyChain` detecta cualquier evento editado.
 

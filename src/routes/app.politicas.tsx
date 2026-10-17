@@ -98,7 +98,7 @@ function Politicas() {
     setProposal({ text, changes, next, diffs });
   };
 
-  const save = (ev: React.FormEvent) => {
+  const save = async (ev: React.FormEvent) => {
     ev.preventDefault();
     const e: Record<string, string> = {};
     const amt = {} as Record<AmountKey, number>;
@@ -137,7 +137,7 @@ function Politicas() {
       toast.error("Revisa los campos marcados antes de guardar.");
       return;
     }
-    savePolicy(
+    const saved = await savePolicy(
       {
         ...policy,
         ...amt,
@@ -150,7 +150,10 @@ function Politicas() {
       },
       "Política editada desde Políticas de pago.",
     );
-    toast.success("Política guardada. Todas las decisiones se recalcularon con la nueva versión.");
+    if (saved)
+      toast.success(
+        "Política guardada. Todas las decisiones se recalcularon con la nueva versión.",
+      );
   };
 
   const field = (k: AmountKey | NumKey, label: React.ReactNode, prefix?: string, hint?: string) => (
@@ -294,8 +297,12 @@ function Politicas() {
                 <div className="mt-3 flex gap-2">
                   <Button
                     type="button"
-                    onClick={() => {
-                      savePolicy(proposal.next, `Regla en lenguaje natural: “${proposal.text}”`);
+                    onClick={async () => {
+                      const saved = await savePolicy(
+                        proposal.next,
+                        `Regla en lenguaje natural: “${proposal.text}”`,
+                      );
+                      if (!saved) return;
                       toast.success("Regla aplicada. Nueva versión de la política.");
                       setProposal(null);
                       setNl("");

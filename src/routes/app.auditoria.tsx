@@ -63,7 +63,7 @@ function download(name: string, rows: (string | number)[][]) {
 }
 
 function Auditoria() {
-  const { trail, brokenAt, seed } = useTokenGate();
+  const { trail, brokenAt, seed, mode } = useTokenGate();
   const [type, setType] = useState<"all" | AuditEvent["type"]>("all");
   const [actor, setActor] = useState<"all" | AuditEvent["actorKind"]>("all");
 
@@ -127,7 +127,11 @@ function Auditoria() {
       <Panel
         bodyClassName="p-0"
         title={<span className="flex items-center gap-2">{events.length} eventos</span>}
-        description="En memoria con hash encadenado: se pierde al recargar. En producción vive en un backend de confianza, de solo escritura."
+        description={
+          mode === "supabase"
+            ? "Guardado en Supabase, de solo escritura: la base rechaza editar o borrar eventos, y el hash encadenado detecta cualquier cambio."
+            : "En memoria con hash encadenado: se pierde al recargar. Configura Supabase para guardarlo."
+        }
       >
         <div className="grid gap-2 border-b border-border p-3 sm:grid-cols-2">
           <Select value={type} onValueChange={(v) => setType(v as typeof type)}>

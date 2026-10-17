@@ -320,6 +320,7 @@ function UploadDialog({
   });
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [scanning, setScanning] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [ocrUsed, setOcrUsed] = useState(false);
   const runOcr = useServerFn(extractInvoice);
 
@@ -370,7 +371,7 @@ function UploadDialog({
     }
   };
 
-  const submit = (ev: React.FormEvent) => {
+  const submit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     const e: Partial<Record<FieldKey, string>> = {};
     const minor = parseToMinor(f.amount);
@@ -402,7 +403,10 @@ function UploadDialog({
       extractionConfidence: ocrUsed ? (f.taxId.trim() ? 92 : 74) : 100,
       missingFields: f.taxId.trim() ? [] : ["ID fiscal del proveedor"],
     };
-    addInvoice(inv);
+    setSaving(true);
+    const saved = await addInvoice(inv);
+    setSaving(false);
+    if (!saved) return;
     toast.success(`Factura ${inv.reference} cargada y evaluada (simulación).`);
     setF({ ...f, supplier: "", amount: "", taxId: "", description: "", number: "", account: "" });
     setOcrUsed(false);
@@ -577,7 +581,7 @@ function UploadDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={scanning}>
+            <Button type="submit" disabled={scanning || saving}>
               Cargar y evaluar
             </Button>
           </DialogFooter>
