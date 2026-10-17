@@ -38,18 +38,18 @@ export type JevDecisionInput = {
   amountUsd: number;
   isApprovedSupplier: boolean;
   isNewSupplier: boolean;
-  dailySpentUsd?: number;
-  dailyLimitMaxUsd?: number; // Límite diario absoluto: 1000 USD
-  dailyApprovalThresholdUsd?: number; // Umbral de aprobación humana: 100 USD
-  invoiceNumber?: string;
-  isDuplicate?: boolean;
-  duplicateDetails?: string;
-  missingFields?: string[];
-  hasContradictions?: boolean;
-  contradictionDetails?: string;
-  isRecurring?: boolean;
-  recurringAverageUsd?: number;
-  recurringVariationPct?: number;
+  dailySpentUsd?: number | undefined;
+  dailyLimitMaxUsd?: number | undefined; // Límite diario absoluto: 1000 USD
+  dailyApprovalThresholdUsd?: number | undefined; // Umbral de aprobación humana: 100 USD
+  invoiceNumber?: string | undefined;
+  isDuplicate?: boolean | undefined;
+  duplicateDetails?: string | undefined;
+  missingFields?: string[] | undefined;
+  hasContradictions?: boolean | undefined;
+  contradictionDetails?: string | undefined;
+  isRecurring?: boolean | undefined;
+  recurringAverageUsd?: number | undefined;
+  recurringVariationPct?: number | undefined;
 };
 
 export type JevApiResponse = {
@@ -90,7 +90,7 @@ export type JevDecisionEvaluation = {
   evaluator: "jev-typesafe-api" | "jev-rules-engine";
   rules: RuleResult[];
   rawState: string;
-  rawQuestions: Record<string, unknown>;
+  rawQuestions: ReturnType<typeof buildJevQuestions>;
   answers?: JevApiResponse["answers"] | undefined;
 };
 
@@ -140,8 +140,7 @@ export function buildJevQuestions() {
           "Proveedor válido aprobado y monto diario menor o igual al límite de 100 USD.",
         monto_mayor_100_usd:
           "El monto es mayor al gasto máximo permitido diario de 100 USD (escalar por monto).",
-        proveedor_nuevo:
-          "Nueva compra con proveedor no conocido (escalar para aprobación humana).",
+        proveedor_nuevo: "Nueva compra con proveedor no conocido (escalar para aprobación humana).",
         variacion_recurrente_20:
           "El costo del pago recurrente supera el promedio habitual en más del 20% (escalar).",
         limite_financiero_1000_usd:
@@ -221,7 +220,8 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
     explanation: isDup
       ? `La factura parece duplicada: el mismo proveedor, número de factura e importe ya aparecen en una factura registrada o pagada. Decisión: frenar la autorización automática mientras se comprueba el duplicado.`
       : "No se identificaron duplicados de factura, proveedor ni importe.",
-    ifChanged: "No se autoriza automáticamente ninguna factura con datos coincidentes a un pago previo.",
+    ifChanged:
+      "No se autoriza automáticamente ninguna factura con datos coincidentes a un pago previo.",
     alert: isDup ? { severity: "critical", text: "Factura potencialmente duplicada" } : undefined,
   });
 
@@ -248,7 +248,9 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
     explanation: hasMissing
       ? `Faltan datos esenciales: ${missing.join(", ")}. No se puede determinar con certeza quién cobra o cómo pagar. Decisión: solicitar revisión y que un humano complete la info faltante.`
       : "Todos los datos esenciales (NIT, proveedor, moneda, concepto) están presentes.",
-    alert: hasMissing ? { severity: "medium", text: `Faltan datos esenciales: ${missing.join(", ")}` } : undefined,
+    alert: hasMissing
+      ? { severity: "medium", text: `Faltan datos esenciales: ${missing.join(", ")}` }
+      : undefined,
   });
 
   // 5. Variación en pago recurrente (> 20%)
@@ -264,7 +266,9 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
       explanation: recExceeds20
         ? `Es un pago recurrente pero con una variación significativa (+${varPct.toFixed(1)}% vs promedio 3 meses: ${input.recurringAverageUsd?.toFixed(2) ?? "N/A"} USD). Decisión: pedir aprobación humana antes de pagar.`
         : `Servicio recurrente dentro de la variación normal (+${varPct.toFixed(1)}%, no supera el 20%).`,
-      alert: recExceeds20 ? { severity: "high", text: "Variación recurrente superior al 20%" } : undefined,
+      alert: recExceeds20
+        ? { severity: "high", text: "Variación recurrente superior al 20%" }
+        : undefined,
     });
   }
 
@@ -292,7 +296,9 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
       ? `El monto (${input.amountUsd.toFixed(2)} USD, acumulado diario: ${dailyTotal.toFixed(2)} USD) es mayor al gasto máximo permitido diario de ${threshold} USD. Decisión: pedir aprobación humana explicándole que es por el monto.`
       : `El monto (${input.amountUsd.toFixed(2)} USD) está dentro del gasto diario permitido sin intervención de ${threshold} USD.`,
     ifChanged: `Se habría aprobado automáticamente si el monto fuera de ${threshold} USD o menos.`,
-    alert: exceeds100 ? { severity: "medium", text: "Supera el umbral diario de 100 USD" } : undefined,
+    alert: exceeds100
+      ? { severity: "medium", text: "Supera el umbral diario de 100 USD" }
+      : undefined,
   });
 
   // Precedencia de resolución:
@@ -443,10 +449,7 @@ export async function evaluateWithJev(
     let outcome: DecisionOutcome = "requires_approval";
     if (actionChoice === "aprobar") outcome = "authorized";
     else if (actionChoice === "frenar") outcome = "blocked";
-    else if (
-      actionChoice === "escalar" &&
-      reasonChoice === "datos_faltantes_o_contradictorios"
-    ) {
+    else if (actionChoice === "escalar" && reasonChoice === "datos_faltantes_o_contradictorios") {
       outcome = "needs_information";
     }
 
