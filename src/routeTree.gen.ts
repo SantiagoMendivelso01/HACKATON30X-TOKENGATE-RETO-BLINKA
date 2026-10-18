@@ -18,6 +18,7 @@ import { Route as AppAjustesRouteImport } from './routes/app.ajustes'
 import { Route as AppAlertasRouteImport } from './routes/app.alertas'
 import { Route as AppAprobacionesRouteImport } from './routes/app.aprobaciones'
 import { Route as AppAuditoriaRouteImport } from './routes/app.auditoria'
+import { Route as AppComoFuncionaRouteImport } from './routes/app.como-funciona'
 import { Route as AppComprasRouteImport } from './routes/app.compras'
 import { Route as AppDecisionesRouteImport } from './routes/app.decisiones'
 import { Route as AppFacturasRouteImport } from './routes/app.facturas'
@@ -69,6 +70,11 @@ const AppAuditoriaRoute = AppAuditoriaRouteImport.update({
   path: '/auditoria',
   getParentRoute: () => AppRoute,
 } as any)
+const AppComoFuncionaRoute = AppComoFuncionaRouteImport.update({
+  id: '/como-funciona',
+  path: '/como-funciona',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppComprasRoute = AppComprasRouteImport.update({
   id: '/compras',
   path: '/compras',
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/app/alertas': typeof AppAlertasRoute
   '/app/aprobaciones': typeof AppAprobacionesRoute
   '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/como-funciona': typeof AppComoFuncionaRoute
   '/app/compras': typeof AppComprasRoute
   '/app/decisiones': typeof AppDecisionesRoute
   '/app/facturas': typeof AppFacturasRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/app/alertas': typeof AppAlertasRoute
   '/app/aprobaciones': typeof AppAprobacionesRoute
   '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/como-funciona': typeof AppComoFuncionaRoute
   '/app/compras': typeof AppComprasRoute
   '/app/decisiones': typeof AppDecisionesRoute
   '/app/facturas': typeof AppFacturasRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/app/alertas': typeof AppAlertasRoute
   '/app/aprobaciones': typeof AppAprobacionesRoute
   '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/como-funciona': typeof AppComoFuncionaRoute
   '/app/compras': typeof AppComprasRoute
   '/app/decisiones': typeof AppDecisionesRoute
   '/app/facturas': typeof AppFacturasRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/app/alertas'
     | '/app/aprobaciones'
     | '/app/auditoria'
+    | '/app/como-funciona'
     | '/app/compras'
     | '/app/decisiones'
     | '/app/facturas'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/app/alertas'
     | '/app/aprobaciones'
     | '/app/auditoria'
+    | '/app/como-funciona'
     | '/app/compras'
     | '/app/decisiones'
     | '/app/facturas'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/app/alertas'
     | '/app/aprobaciones'
     | '/app/auditoria'
+    | '/app/como-funciona'
     | '/app/compras'
     | '/app/decisiones'
     | '/app/facturas'
@@ -264,6 +276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuditoriaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/como-funciona': {
+      id: '/app/como-funciona'
+      path: '/como-funciona'
+      fullPath: '/app/como-funciona'
+      preLoaderRoute: typeof AppComoFuncionaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/compras': {
       id: '/app/compras'
       path: '/compras'
@@ -308,6 +327,7 @@ interface AppRouteChildren {
   AppAlertasRoute: typeof AppAlertasRoute
   AppAprobacionesRoute: typeof AppAprobacionesRoute
   AppAuditoriaRoute: typeof AppAuditoriaRoute
+  AppComoFuncionaRoute: typeof AppComoFuncionaRoute
   AppComprasRoute: typeof AppComprasRoute
   AppDecisionesRoute: typeof AppDecisionesRoute
   AppFacturasRoute: typeof AppFacturasRoute
@@ -322,6 +342,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAlertasRoute: AppAlertasRoute,
   AppAprobacionesRoute: AppAprobacionesRoute,
   AppAuditoriaRoute: AppAuditoriaRoute,
+  AppComoFuncionaRoute: AppComoFuncionaRoute,
   AppComprasRoute: AppComprasRoute,
   AppDecisionesRoute: AppDecisionesRoute,
   AppFacturasRoute: AppFacturasRoute,

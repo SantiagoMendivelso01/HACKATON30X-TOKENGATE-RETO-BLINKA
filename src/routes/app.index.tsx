@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Check, FilePlus2, ShieldAlert } from "lucide-react";
+import { ArrowRight, Check, FilePlus2, ShieldAlert, Waypoints } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   ChannelIcon,
@@ -10,13 +10,13 @@ import {
   StatusBadge,
 } from "@/components/tg/primitives";
 import { DecisionSheet } from "@/components/tg/decision-detail";
-import { AgentFlow } from "@/components/tg/agent-flow";
+
 import { Waves } from "@/components/tg/line-art";
 import { sevMeta } from "@/components/tg/severity";
 import { useTokenGate, type EvaluatedSubject } from "@/lib/tokengate/store";
 import { formatBase, formatDateTime } from "@/lib/tokengate/format";
 import { needsAttention, statusMeta } from "@/lib/tokengate/status";
-import { FLAG_LABEL, localCrossCheck, mainFlag } from "@/lib/tokengate/pipeline";
+import { FLAG_LABEL, mainFlag } from "@/lib/tokengate/pipeline";
 import { cn } from "@/lib/utils";
 import type { AlertSeverity, DecisionOutcome, RuleId } from "@/lib/tokengate/types";
 
@@ -269,7 +269,7 @@ function DailyChart({ regs }: { regs: EvaluatedSubject[] }) {
 }
 
 function Dashboard() {
-  const { all, alerts, seed, policy, ledger, trail } = useTokenGate();
+  const { all, alerts, seed, policy, ledger } = useTokenGate();
   const [open, setOpen] = useState<string | null>(null);
   const [range, setRange] = useState<"all" | "7d">("all");
   let regs = all;
@@ -297,8 +297,6 @@ function Dashboard() {
       ),
   ).length;
   const processed = regs.reduce((s, e) => s + e.baseMinor, 0);
-  // JEV verifies every decision with its typed schema; count where both agree.
-  const jevAgree = regs.filter((e) => localCrossCheck(e.subject, e.result, policy).agrees).length;
 
   // Resultado final por estado
   const finals = [
@@ -414,16 +412,32 @@ function Dashboard() {
         </div>
       </section>
 
-      <AgentFlow
-        received={n}
-        read={regs.filter((e) => e.subject.kind === "invoice").length}
-        rules={14}
-        jevAgree={jevAgree}
-        paid={finals[0]!.n}
-        asked={queue.length}
-        stopped={regs.filter((e) => e.state === "blocked" || e.state === "rejected").length}
-        events={trail.length}
-      />
+      <Link
+        to="/app/como-funciona"
+        className="lift group mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-border/80 bg-card px-5 py-3.5"
+      >
+        <Waypoints className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+        <span className="text-sm font-medium">Cada factura pasa por 6 pasos</span>
+        <ol className="flex flex-1 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+          {[
+            "Llega",
+            "Claude la lee",
+            "Tus reglas deciden",
+            "JEV verifica",
+            "Decide",
+            "Queda registrado",
+          ].map((s, i) => (
+            <li key={s} className="flex items-center gap-1.5">
+              {i > 0 && <span className="h-px w-3 bg-primary/40" aria-hidden />}
+              <span className={cn(s === "JEV verifica" && "font-medium text-primary")}>{s}</span>
+            </li>
+          ))}
+        </ol>
+        <span className="flex items-center gap-1 text-sm font-medium text-primary">
+          Ver cómo funciona
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        </span>
+      </Link>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {chip(range === "all", "Todo el periodo", () => setRange("all"))}

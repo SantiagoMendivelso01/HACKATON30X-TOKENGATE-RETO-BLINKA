@@ -9,6 +9,7 @@ import {
   Building2,
   FlaskConical,
   LogOut,
+  Waypoints,
 } from "lucide-react";
 import {
   Sidebar,
@@ -42,6 +43,7 @@ export const navGroups: { label: string; items: Item[] }[] = [
     label: "Operación",
     items: [
       { title: "Resumen", url: "/app", icon: LayoutDashboard },
+      { title: "Cómo funciona", url: "/app/como-funciona", icon: Waypoints },
       { title: "Facturas", url: "/app/facturas", icon: FileText },
       { title: "Por aprobar", url: "/app/aprobaciones", icon: UserCheck, badge: "attention" },
     ],
