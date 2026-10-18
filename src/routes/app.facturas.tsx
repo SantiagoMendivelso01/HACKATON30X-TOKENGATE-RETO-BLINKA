@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { extractInvoice } from "@/lib/tokengate/ocr.functions";
+import { readText } from "@/lib/tokengate/ai-read.functions";
+import { readTextLocally, type TextFields } from "@/lib/tokengate/text-parse";
+import { SayItBox } from "@/components/tg/voice";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -480,6 +483,53 @@ function UploadDialog({
   const [saving, setSaving] = useState(false);
   const [ocrUsed, setOcrUsed] = useState(false);
   const runOcr = useServerFn(extractInvoice);
+  const runRead = useServerFn(readText);
+  // Original text of the invoice (pasted, dictated or read from the file): the rules engine scans
+  // it for instructions aimed at the agent.
+  const [raw, setRaw] = useState("");
+  const [said, setSaid] = useState("");
+  const [reading, setReading] = useState(false);
+  const [source, setSource] = useState<"manual" | "file" | "text">("manual");
+  // Bumps each time the agent fills the form, to light up the fields it filled.
+  const [filled, setFilled] = useState(0);
+
+  const applyFields = (o: Partial<TextFields>) =>
+    setF((prev) => ({
+      ...prev,
+      supplier: o.supplier ?? prev.supplier,
+      amount: o.amount ?? prev.amount,
+      currency: o.currency ?? prev.currency,
+      number: o.invoiceNumber ?? prev.number,
+      due: o.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(o.dueDate) ? o.dueDate : prev.due,
+      taxId: o.supplierTaxId ?? prev.taxId,
+      description: o.description ?? prev.description,
+      account: o.bankAccount ?? prev.account,
+    }));
+
+  const readSaid = async () => {
+    const text = said.trim();
+    if (!text) return;
+    setReading(true);
+    try {
+      const res = await runRead({ data: { kind: "invoice", text } });
+      applyFields(res.fields);
+      setRaw(text);
+      setSource("text");
+      setFilled((n) => n + 1);
+      setErrors({});
+      toast.success(
+        res.by === "claude"
+          ? "Claude llenó el formulario con tu texto. Revísalo y evalúa."
+          : "Llené lo que pude con tu texto. Revísalo y completa lo que falte.",
+      );
+    } catch {
+      applyFields(readTextLocally(text));
+      setRaw(text);
+      setSource("text");
+    } finally {
+      setReading(false);
+    }
+  };
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
@@ -516,8 +566,12 @@ function UploadDialog({
         due: o.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(o.dueDate) ? o.dueDate : prev.due,
         taxId: o.supplierTaxId ?? prev.taxId,
         description: o.description ?? prev.description,
+        account: o.bankAccount ?? prev.account,
       }));
+      setRaw(o.fullText ?? "");
+      setSource("file");
       setOcrUsed(true);
+      setFilled((n) => n + 1);
       if (o.currency && !(ALL_CURRENCIES as string[]).includes(o.currency))
         toast.warning(`Moneda detectada ${o.currency}: no está soportada, revisa el campo.`);
       toast.success("Datos extraídos con Claude OCR. Revísalos antes de evaluar.");
@@ -548,7 +602,13 @@ function UploadDialog({
       invoiceNumber: f.number.trim() || undefined,
       supplierTaxId: f.taxId.trim() || undefined,
       bankAccount: f.account.trim() || undefined,
-      sender: ocrUsed ? "Extracción OCR (PDF/Imagen)" : "Carga directa",
+      rawText: raw.trim() || undefined,
+      sender:
+        source === "file"
+          ? "Extracción OCR (PDF/Imagen)"
+          : source === "text"
+            ? "Texto pegado o dictado"
+            : "Carga directa",
       supplier: f.supplier.trim(),
       amount: { amountMinor: minor, currency: f.currency },
       agentId: "agent-default",
@@ -566,6 +626,9 @@ function UploadDialog({
     toast.success(`Factura ${inv.reference} evaluada por el agente.`);
     setF({ ...f, supplier: "", amount: "", taxId: "", description: "", number: "", account: "" });
     setOcrUsed(false);
+    setRaw("");
+    setSaid("");
+    setSource("manual");
     onClose();
     onCreated(inv.id);
   };
@@ -581,26 +644,28 @@ function UploadDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Cargar factura para que el agente decida</DialogTitle>
+          <DialogTitle className="display text-[28px] font-normal">Nueva factura</DialogTitle>
           <DialogDescription>
-            Sube un PDF/imagen para extraer los datos con OCR, o elige un caso de prueba para ver
-            cómo responde el agente.
+            Súbela, pégala o díctala. El agente llena los datos y tú solo los revisas.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-3" noValidate>
-          <label className="flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-center text-sm hover:bg-primary/10 focus-within:ring-2 focus-within:ring-ring">
+          <p className="eyebrow">1 · Dale la factura al agente</p>
+          <label
+            className={`flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm hover:bg-primary/10 focus-within:ring-2 focus-within:ring-ring ${scanning ? "tg-scan" : ""}`}
+          >
             {scanning ? (
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
             ) : (
-              <ScanText className="h-5 w-5 text-primary" />
+              <ScanText className="h-5 w-5 shrink-0 text-primary" />
             )}
-            <span className="font-medium">
-              {scanning
-                ? "Claude está leyendo la factura…"
-                : "Subir PDF o imagen para extraer con OCR"}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              Extrae proveedor, monto, moneda, NIT/EIN, fecha límite y concepto automáticamente
+            <span className="min-w-0">
+              <span className="block font-medium">
+                {scanning ? "Claude está leyendo la factura…" : "Subir PDF o foto de la factura"}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Claude lee quién cobra, cuánto, en qué moneda y para cuándo
+              </span>
             </span>
             <input
               type="file"
@@ -613,13 +678,22 @@ function UploadDialog({
               }}
             />
           </label>
+          <SayItBox
+            value={said}
+            onChange={setSaid}
+            onSubmit={readSaid}
+            busy={reading}
+            submitLabel={reading ? "Leyendo…" : "Llenar con este texto"}
+            placeholder="O pega aquí el correo o el mensaje de chat, o dicta: “Factura de Juliana Restrepo por 9.960.000 pesos colombianos, diseño de octubre, vence el 30 de octubre, cuenta Bancolombia 4821”"
+            rows={3}
+          />
 
-          {/* Casos rápidos del Reto Blinka */}
-          <div className="rounded-xl border border-border bg-muted/30 p-2.5">
-            <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <Sparkles className="h-3 w-3 text-primary" />O rellena un caso de prueba con 1 clic:
-            </p>
-            <div className="flex flex-wrap gap-1.5">
+          <details className="group rounded-xl border border-border bg-muted/30 px-3 py-2">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Sparkles className="h-3 w-3 text-primary" />
+              Probar con un caso de ejemplo
+            </summary>
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {DEMO_PRESETS.map((p) => (
                 <button
                   key={p.label}
@@ -644,129 +718,131 @@ function UploadDialog({
                 </button>
               ))}
             </div>
-          </div>
+          </details>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="sup">¿A quién se le paga? (Proveedor / Contratista)</Label>
-            <Input
-              id="sup"
-              value={f.supplier}
-              onChange={(e) => setF({ ...f, supplier: e.target.value })}
-              placeholder="Ej. Juliana Restrepo o AWS"
-              aria-invalid={!!errors.supplier}
-              aria-describedby="supplier-err"
-              className="h-10"
-            />
-            {field("supplier")}
-          </div>
-
-          <div className="grid grid-cols-[1fr_110px_145px] gap-2">
+          <p className="eyebrow mt-1">2 · Revisa los datos</p>
+          <div key={filled} className={filled ? "tg-fill grid gap-3" : "grid gap-3"}>
             <div className="grid gap-1.5">
-              <Label htmlFor="amt">¿Cuánto?</Label>
+              <Label htmlFor="sup">¿A quién se le paga? (Proveedor / Contratista)</Label>
               <Input
-                id="amt"
-                inputMode="decimal"
-                value={f.amount}
-                onChange={(e) => setF({ ...f, amount: e.target.value })}
-                placeholder="1500.00"
-                aria-invalid={!!errors.amount}
-                aria-describedby="amount-err"
-                className="h-10 font-mono"
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Moneda</Label>
-              <Select
-                value={f.currency}
-                onValueChange={(v) => setF({ ...f, currency: v as Currency })}
-              >
-                <SelectTrigger className="h-10 font-mono" aria-label="Moneda">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ALL_CURRENCIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="due">¿Para cuándo?</Label>
-              <Input
-                id="due"
-                type="date"
-                value={f.due}
-                onChange={(e) => setF({ ...f, due: e.target.value })}
+                id="sup"
+                value={f.supplier}
+                onChange={(e) => setF({ ...f, supplier: e.target.value })}
+                placeholder="Ej. Juliana Restrepo o AWS"
+                aria-invalid={!!errors.supplier}
+                aria-describedby="supplier-err"
                 className="h-10"
               />
+              {field("supplier")}
+            </div>
+
+            <div className="grid grid-cols-[1fr_110px_145px] gap-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="amt">¿Cuánto?</Label>
+                <Input
+                  id="amt"
+                  inputMode="decimal"
+                  value={f.amount}
+                  onChange={(e) => setF({ ...f, amount: e.target.value })}
+                  placeholder="1500.00"
+                  aria-invalid={!!errors.amount}
+                  aria-describedby="amount-err"
+                  className="h-10 font-mono"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Moneda</Label>
+                <Select
+                  value={f.currency}
+                  onValueChange={(v) => setF({ ...f, currency: v as Currency })}
+                >
+                  <SelectTrigger className="h-10 font-mono" aria-label="Moneda">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_CURRENCIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="due">¿Para cuándo?</Label>
+                <Input
+                  id="due"
+                  type="date"
+                  value={f.due}
+                  onChange={(e) => setF({ ...f, due: e.target.value })}
+                  className="h-10"
+                />
+              </div>
+            </div>
+            {field("amount")}
+            {field("due")}
+
+            {f.currency !== "USD" &&
+              (() => {
+                const m = parseToMinor(f.amount);
+                if (!m || m <= 0) return null;
+                const rate = seed.fx[f.currency] ?? 1;
+                const usdMinor = Math.round(m / rate);
+                return (
+                  <p className="-mt-1 font-mono text-xs text-primary">
+                    Equivalencia: {formatMoney({ amountMinor: m, currency: f.currency })} ≈{" "}
+                    <b>{formatMoney({ amountMinor: usdMinor, currency: "USD" })}</b> (tasa: 1 USD ={" "}
+                    {rate.toLocaleString("en-US")} {f.currency})
+                  </p>
+                );
+              })()}
+
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="tax">ID Fiscal (NIT / EIN)</Label>
+                <Input
+                  id="tax"
+                  value={f.taxId}
+                  onChange={(e) => setF({ ...f, taxId: e.target.value })}
+                  placeholder="NIT 901234567-1"
+                  className="h-10"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="acc">Cuenta destino</Label>
+                <Input
+                  id="acc"
+                  value={f.account}
+                  onChange={(e) => setF({ ...f, account: e.target.value })}
+                  placeholder="Bancolombia ****4821"
+                  className="h-10"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="num">N.º de factura</Label>
+                <Input
+                  id="num"
+                  value={f.number}
+                  onChange={(e) => setF({ ...f, number: e.target.value })}
+                  placeholder="INV-2026-10"
+                  className="h-10"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="desc">Concepto / Descripción</Label>
+              <Textarea
+                id="desc"
+                value={f.description}
+                onChange={(e) => setF({ ...f, description: e.target.value })}
+                placeholder="Ej. Desarrollo backend mensual acordado"
+                aria-invalid={!!errors.description}
+                className="min-h-16"
+              />
+              {field("description")}
             </div>
           </div>
-          {field("amount")}
-          {field("due")}
-
-          {f.currency !== "USD" &&
-            (() => {
-              const m = parseToMinor(f.amount);
-              if (!m || m <= 0) return null;
-              const rate = seed.fx[f.currency] ?? 1;
-              const usdMinor = Math.round(m / rate);
-              return (
-                <p className="-mt-1 font-mono text-xs text-primary">
-                  Equivalencia: {formatMoney({ amountMinor: m, currency: f.currency })} ≈{" "}
-                  <b>{formatMoney({ amountMinor: usdMinor, currency: "USD" })}</b> (tasa: 1 USD ={" "}
-                  {rate.toLocaleString("en-US")} {f.currency})
-                </p>
-              );
-            })()}
-
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="tax">ID Fiscal (NIT / EIN)</Label>
-              <Input
-                id="tax"
-                value={f.taxId}
-                onChange={(e) => setF({ ...f, taxId: e.target.value })}
-                placeholder="NIT 901234567-1"
-                className="h-10"
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="acc">Cuenta destino</Label>
-              <Input
-                id="acc"
-                value={f.account}
-                onChange={(e) => setF({ ...f, account: e.target.value })}
-                placeholder="Bancolombia ****4821"
-                className="h-10"
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="num">N.º de factura</Label>
-              <Input
-                id="num"
-                value={f.number}
-                onChange={(e) => setF({ ...f, number: e.target.value })}
-                placeholder="INV-2026-10"
-                className="h-10"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label htmlFor="desc">Concepto / Descripción</Label>
-            <Textarea
-              id="desc"
-              value={f.description}
-              onChange={(e) => setF({ ...f, description: e.target.value })}
-              placeholder="Ej. Desarrollo backend mensual acordado"
-              aria-invalid={!!errors.description}
-              className="min-h-16"
-            />
-            {field("description")}
-          </div>
-
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar

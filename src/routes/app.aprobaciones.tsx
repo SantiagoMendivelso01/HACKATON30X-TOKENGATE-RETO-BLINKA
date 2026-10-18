@@ -2,10 +2,11 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { CheckCheck } from "lucide-react";
 import { DecisionDetail, DecisionSheet } from "@/components/tg/decision-detail";
-import { EmptyState, PageHeader, Panel, StatusBadge } from "@/components/tg/primitives";
+import { CountUp, EmptyState, PageHeader, Panel, StatusBadge } from "@/components/tg/primitives";
 import { useTokenGate } from "@/lib/tokengate/store";
 import { formatMoney } from "@/lib/tokengate/format";
 import { needsAttention } from "@/lib/tokengate/status";
+import { mainFlag } from "@/lib/tokengate/pipeline";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/aprobaciones")({
@@ -45,44 +46,60 @@ function Aprobaciones() {
           />
         </Panel>
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
           <Panel
-            className="min-w-0"
+            className="min-w-0 lg:sticky lg:top-20 lg:self-start"
             title={
-              <span className="flex items-center gap-2">{queue.length} esperando tu decisión</span>
+              <span className="flex items-baseline gap-2">
+                <span className="display text-[32px] leading-none text-primary">
+                  <CountUp value={queue.length} />
+                </span>
+                {queue.length === 1 ? "pago espera tu decisión" : "pagos esperan tu decisión"}
+              </span>
             }
             bodyClassName="p-0"
           >
             <ul className="divide-y divide-border" role="listbox" aria-label="Cola de aprobación">
-              {queue.map((e) => {
-                const reasonLabel =
-                  e.result.rules.find((r) => r.status === "needs_review" || r.status === "failed")
-                    ?.label ?? e.subject.description;
+              {queue.map((e, i) => {
+                const reasonLabel = mainFlag(e.result) ?? e.subject.description;
+                const active = current?.subject.id === e.subject.id;
                 return (
-                  <li key={e.subject.id}>
+                  <li
+                    key={e.subject.id}
+                    className="tg-row"
+                    style={{ animationDelay: `${i * 70}ms` }}
+                  >
                     <button
                       type="button"
                       role="option"
-                      aria-selected={current?.subject.id === e.subject.id}
+                      aria-selected={active}
                       onClick={() => {
                         setSelected(e.subject.id);
                         if (!window.matchMedia("(min-width: 1024px)").matches)
                           setMobileOpen(e.subject.id);
                       }}
                       className={cn(
-                        "flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-muted/60 focus-visible:bg-muted focus-visible:outline-none",
-                        current?.subject.id === e.subject.id && "bg-muted",
+                        "relative flex w-full flex-col gap-1.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted focus-visible:outline-none",
+                        active && "bg-accent/70",
                       )}
                     >
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "absolute inset-y-2 left-0 w-1 origin-center rounded-r-full bg-primary transition-transform duration-300",
+                          active ? "scale-y-100" : "scale-y-0",
+                        )}
+                      />
                       <span className="flex w-full items-center justify-between gap-2">
                         <span className="truncate text-sm font-medium">{e.subject.supplier}</span>
-                        <span className="tabular text-sm font-medium">
+                        <span className="tabular shrink-0 text-sm font-semibold">
                           {formatMoney(e.subject.amount)}
                         </span>
                       </span>
+                      <span className="text-[13px] text-foreground/80">{reasonLabel}</span>
                       <span className="flex w-full items-center justify-between gap-2">
-                        <span className="truncate text-xs text-muted-foreground">
-                          <span className="font-mono">{e.subject.reference}</span> · {reasonLabel}
+                        <span className="font-mono text-[11px] text-muted-foreground">
+                          {e.subject.reference}
                         </span>
                         <StatusBadge status={e.status} />
                       </span>

@@ -315,3 +315,208 @@
     transform: scaleY(0);
   }
 }
+
+/* ---------- Pipeline y flujo del agente ---------- */
+@layer components {
+  /* Cada paso del pipeline aparece en orden, como si el agente lo recorriera. */
+  .tg-step {
+    animation: tg-rise 420ms var(--ease-out-soft) both;
+  }
+  .tg-line {
+    transform-origin: top;
+    animation: tg-grow-y 480ms var(--ease-out-soft) both;
+  }
+  /* Puntos que viajan por la línea del flujo en el resumen. */
+  .tg-flow-dot {
+    animation: tg-travel 4s linear infinite;
+  }
+  .tg-node-pulse {
+    animation: tg-pulse 2.4s ease-in-out infinite;
+  }
+}
+@keyframes tg-travel {
+  from {
+    left: 0%;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  to {
+    left: 100%;
+    opacity: 0;
+  }
+}
+@keyframes tg-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-primary) 35%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 7px color-mix(in oklch, var(--color-primary) 0%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tg-step,
+  .tg-line,
+  .tg-flow-dot,
+  .tg-node-pulse {
+    animation: none;
+  }
+}
+
+/* Pulso que recorre la línea de pasos del flujo. */
+@layer components {
+  .tg-track-glow {
+    animation: tg-track 3.6s var(--ease-out-soft) infinite;
+  }
+}
+@keyframes tg-track {
+  from {
+    left: -10rem;
+  }
+  to {
+    left: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tg-track-glow {
+    animation: none;
+  }
+}
+:root {
+  --line-art: #5f6f93;
+}
+.dark {
+  --line-art: #7d8bb0;
+}
+
+/* ---------- Brillo y movimiento en paneles ---------- */
+@property --tg-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@layer components {
+  /* Borde con un destello que gira: para lo que espera una decisión. */
+  .tg-glow-border {
+    position: relative;
+    isolation: isolate;
+  }
+  .tg-glow-border::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 2px;
+    background: conic-gradient(
+      from var(--tg-angle),
+      transparent 0 62%,
+      color-mix(in oklch, var(--color-primary) 70%, transparent) 80%,
+      var(--color-primary) 88%,
+      transparent 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: tg-spin 4.5s linear infinite;
+  }
+  /* Línea que barre de arriba abajo mientras Claude lee. */
+  .tg-scan {
+    position: relative;
+    overflow: hidden;
+  }
+  .tg-scan::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    height: 40%;
+    top: -40%;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in oklch, var(--color-primary) 22%, transparent),
+      transparent
+    );
+    animation: tg-scan 1.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  /* Los campos que llenó el agente se iluminan un momento, uno tras otro. */
+  .tg-fill input,
+  .tg-fill textarea,
+  .tg-fill button[role="combobox"] {
+    animation: tg-fill 1.4s var(--ease-out-soft) both;
+  }
+  .tg-fill > :nth-child(2) :is(input, textarea, button[role="combobox"]) {
+    animation-delay: 90ms;
+  }
+  .tg-fill > :nth-child(3) :is(input, textarea, button[role="combobox"]) {
+    animation-delay: 180ms;
+  }
+  .tg-fill > :nth-child(n + 4) :is(input, textarea, button[role="combobox"]) {
+    animation-delay: 270ms;
+  }
+  /* Reflejo que recorre una barra. */
+  .tg-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .tg-shimmer::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    width: 30%;
+    left: -30%;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 45%), transparent);
+    animation: tg-shimmer 3.2s ease-in-out 1s infinite;
+    pointer-events: none;
+  }
+  /* Filas que entran en cascada. */
+  .tg-row {
+    animation: tg-rise 380ms var(--ease-out-soft) both;
+  }
+}
+@keyframes tg-spin {
+  to {
+    --tg-angle: 360deg;
+  }
+}
+@keyframes tg-scan {
+  to {
+    top: 100%;
+  }
+}
+@keyframes tg-fill {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-primary) 0%, transparent);
+    background-color: color-mix(in oklch, var(--color-primary) 18%, transparent);
+  }
+  40% {
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary) 30%, transparent);
+  }
+}
+@keyframes tg-shimmer {
+  0% {
+    left: -30%;
+  }
+  60%,
+  100% {
+    left: 110%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tg-glow-border::before,
+  .tg-scan::after,
+  .tg-fill input,
+  .tg-fill textarea,
+  .tg-shimmer::after,
+  .tg-row {
+    animation: none;
+  }
+}

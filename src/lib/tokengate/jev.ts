@@ -30,7 +30,8 @@ export type JevReason =
   | "variacion_recurrente_20"
   | "limite_financiero_1000_usd"
   | "factura_duplicada"
-  | "datos_faltantes_o_contradictorios";
+  | "datos_faltantes_o_contradictorios"
+  | "senal_de_riesgo";
 
 export const CurrencySchema = z.enum(["USD", "EUR", "COP", "MXN", "BRL", "ARS"]);
 
@@ -53,6 +54,8 @@ export const JevInputSchema = z.object({
   isRecurring: z.boolean().optional(),
   recurringAverageUsd: z.number().optional(),
   recurringVariationPct: z.number().optional(),
+  /** Findings from the rules engine that need a person (bank account change, split payment…). */
+  reviewSignals: z.array(z.string()).optional(),
 });
 
 export type JevDecisionInput = z.infer<typeof JevInputSchema>;
@@ -139,6 +142,7 @@ export function buildJevState(input: JevDecisionInput): string {
     `- Gasto acumulado diario proyectado: ${dailyTotal.toFixed(2)} USD (Gasto diario máx permitido sin aprobación: ${threshold} USD | Límite absoluto por transacción/día: ${dailyLimit} USD)`,
     `- Control de duplicados: ${input.isDuplicate ? `ALERTA DUPLICADA: ${input.duplicateDetails ?? "Mismo proveedor, factura e importe registrado"}` : "Sin duplicados detectados"}`,
     `- Integridad de datos esenciales: ${missing.length ? `FALTAN DATOS: ${missing.join(", ")}` : "Datos completos"}${input.hasContradictions ? ` | CONTRADICCIÓN: ${input.contradictionDetails ?? "Datos contradictorios"}` : ""}`,
+    `- Señales de riesgo del motor de reglas: ${input.reviewSignals?.length ? input.reviewSignals.join(" | ") : "Ninguna"}`,
     `- Naturaleza del pago: ${input.isRecurring ? `Servicio recurrente. Promedio últimos 3 meses: ${input.recurringAverageUsd?.toFixed(2) ?? "N/A"} USD. Variación actual: ${input.recurringVariationPct != null ? `${input.recurringVariationPct >= 0 ? "+" : ""}${input.recurringVariationPct.toFixed(1)}%` : "N/A"}` : "Gasto puntual / ordinario"}`,
   ].join("\n");
 }
@@ -146,49 +150,45 @@ export function buildJevState(input: JevDecisionInput): string {
 /**
  * Genera el esquema de preguntas tipadas para JEV TypeSafe.
  */
-export function buildJevQuestions(): JevQuestionsSchema {
+export function buildJevQuestions(threshold = 100, limit = 1000): JevQuestionsSchema {
+  const t = threshold.toLocaleString("en-US");
+  const l = limit.toLocaleString("en-US");
   return {
     action: {
       type: "choice",
       instructions:
         "¿Cuál es la decisión financiera que debe tomar el sistema sobre esta orden de pago/factura?",
       criteria: {
-        aprobar:
-          "Aprobar automáticamente: El proveedor está en la lista de proveedores válidos, no es una compra nueva, el monto diario no supera los 100 USD (ni sus equivalencias), no es duplicada, los datos esenciales están completos y si es un servicio recurrente la variación no supera el 20%.",
-        escalar:
-          "Escalar a aprobación humana: Requiere revisión humana obligatoria si: (1) Es una nueva compra (proveedor no conocido), o (2) El monto diario es mayor al gasto máximo permitido de 100 USD (explicar que es por el monto), o (3) Es un pago recurrente que supera el costo usual en más del 20%, o (4) Faltan datos esenciales como el NIT y se requiere que un humano complete la información.",
-        frenar:
-          "Frenar / Bloquear el pago: Detener inmediatamente la autorización automática si: (1) Supera los límites financieros absolutos (más de 1,000 USD diarios o excede el presupuesto disponible del periodo), o (2) La factura parece duplicada (mismo proveedor, número de factura e importe ya existentes o pagados), o (3) Existen datos esenciales contradictorios o materialmente inválidos.",
+        aprobar: `Aprobar automáticamente: El proveedor está en la lista de proveedores válidos, no es una compra nueva, el monto diario no supera los ${t} USD (ni sus equivalencias), no es duplicada, los datos esenciales están completos, no hay señales de riesgo y si es un servicio recurrente la variación no supera el 20%.`,
+        escalar: `Escalar a aprobación humana: Requiere revisión humana obligatoria si: (1) Es una nueva compra (proveedor no conocido), o (2) El monto diario es mayor al gasto máximo permitido de ${t} USD (explicar que es por el monto), o (3) Es un pago recurrente que supera el costo usual en más del 20%, o (4) Faltan datos esenciales como el NIT y se requiere que un humano complete la información, o (5) El motor de reglas reportó señales de riesgo (cuenta bancaria distinta, posible pago partido, lectura poco confiable).`,
+        frenar: `Frenar / Bloquear el pago: Detener inmediatamente la autorización automática si: (1) Supera los límites financieros absolutos (más de ${l} USD diarios o excede el presupuesto disponible del periodo), o (2) La factura parece duplicada (mismo proveedor, número de factura e importe ya existentes o pagados), o (3) Existen datos esenciales contradictorios o materialmente inválidos.`,
       },
     },
     motivo: {
       type: "choice",
       instructions: "¿Cuál es la causa o regla determinante de la decisión tomada?",
       criteria: {
-        aprobado_normal:
-          "Proveedor válido aprobado y monto diario menor o igual al límite de 100 USD.",
-        monto_mayor_100_usd:
-          "El monto es mayor al gasto máximo permitido diario de 100 USD (escalar por monto).",
+        aprobado_normal: `Proveedor válido aprobado y monto diario menor o igual al límite de ${t} USD.`,
+        monto_mayor_100_usd: `El monto es mayor al gasto máximo permitido diario de ${t} USD (escalar por monto).`,
         proveedor_nuevo: "Nueva compra con proveedor no conocido (escalar para aprobación humana).",
         variacion_recurrente_20:
           "El costo del pago recurrente supera el promedio habitual en más del 20% (escalar).",
-        limite_financiero_1000_usd:
-          "Supera el límite financiero absoluto de 1,000 USD diarios o excede el presupuesto (frenar).",
+        limite_financiero_1000_usd: `Supera el límite financiero absoluto de ${l} USD diarios o excede el presupuesto (frenar).`,
         factura_duplicada:
           "Factura duplicada: mismo proveedor, número de factura e importe ya pagado/registrado (frenar).",
         datos_faltantes_o_contradictorios:
           "Faltan datos esenciales (ej: falta NIT) o son contradictorios (frenar / solicitar revisión).",
+        senal_de_riesgo:
+          "El motor de reglas reportó una señal de riesgo que requiere revisión humana (escalar).",
       },
     },
     supera_limite_absoluto_1000: {
       type: "noul",
-      instructions:
-        "¿El importe excede el límite financiero absoluto de 1,000 USD por transacción/día o el presupuesto?",
+      instructions: `¿El importe excede el límite financiero absoluto de ${l} USD por transacción/día o el presupuesto?`,
     },
     supera_umbral_diario_100: {
       type: "noul",
-      instructions:
-        "¿El monto excede el gasto máximo permitido diario de 100 USD (o equivalencias)?",
+      instructions: `¿El monto excede el gasto máximo permitido diario de ${t} USD (o equivalencias)?`,
     },
     es_compra_nueva: {
       type: "noul",
@@ -227,7 +227,7 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
   const exceeds1000 = input.amountUsd > dailyLimit || dailyTotal > dailyLimit;
   rules.push({
     ruleId: "within_transaction_limit",
-    label: "Límite financiero absoluto diario (1,000 USD)",
+    label: `Límite financiero absoluto diario (${dailyLimit.toLocaleString("en-US")} USD)`,
     status: exceeds1000 ? "failed" : "passed",
     rule: `Límite diario absoluto: ${dailyLimit} USD`,
     explanation: exceeds1000
@@ -235,7 +235,10 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
       : `El importe de ${input.amountUsd.toFixed(2)} USD no excede el límite financiero diario absoluto de ${dailyLimit} USD.`,
     ifChanged: `Se habría seguido evaluando con un importe diario acumulado menor o igual a ${dailyLimit} USD.`,
     alert: exceeds1000
-      ? { severity: "critical", text: "Supera el límite financiero absoluto de 1,000 USD" }
+      ? {
+          severity: "critical",
+          text: `Supera el límite financiero absoluto de ${dailyLimit.toLocaleString("en-US")} USD`,
+        }
       : undefined,
   });
 
@@ -314,11 +317,24 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
     alert: isNew ? { severity: "high", text: "Nueva compra / Proveedor no conocido" } : undefined,
   });
 
-  // 7. Gasto máximo permitido diario de 100 USD
+  // 7. Señales de riesgo que el motor de reglas reporta para revisión humana
+  const signals = input.reviewSignals ?? [];
+  if (signals.length) {
+    rules.push({
+      ruleId: "bank_account",
+      label: "Señales de riesgo del motor de reglas",
+      status: "needs_review",
+      rule: "Cualquier señal de riesgo → pedir aprobación humana",
+      explanation: signals.join(" "),
+      alert: { severity: "high", text: "Señal de riesgo para revisión humana" },
+    });
+  }
+
+  // 8. Gasto máximo permitido diario sin aprobación humana
   const exceeds100 = input.amountUsd > threshold || dailyTotal > threshold;
   rules.push({
     ruleId: "human_approval_threshold",
-    label: "Gasto máximo permitido diario (100 USD)",
+    label: `Gasto máximo permitido diario (${threshold.toLocaleString("en-US")} USD)`,
     status: exceeds100 ? "needs_review" : "passed",
     rule: `Gasto máximo diario permitido sin aprobación humana: ${threshold} USD`,
     explanation: exceeds100
@@ -326,7 +342,10 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
       : `El monto (${input.amountUsd.toFixed(2)} USD) está dentro del gasto diario permitido sin intervención de ${threshold} USD.`,
     ifChanged: `Se habría aprobado automáticamente si el monto fuera de ${threshold} USD o menos.`,
     alert: exceeds100
-      ? { severity: "medium", text: "Supera el umbral diario de 100 USD" }
+      ? {
+          severity: "medium",
+          text: `Supera el umbral diario de ${threshold.toLocaleString("en-US")} USD`,
+        }
       : undefined,
   });
 
@@ -342,7 +361,7 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
       ? `Frenado por política financiera: El monto de ${input.amountUsd.toFixed(2)} USD supera el límite financiero absoluto diario de ${dailyLimit} USD (o acumulado diario de ${dailyTotal.toFixed(2)} USD).`
       : isDup
         ? `Frenado por seguridad: La factura parece duplicada (mismo proveedor, número e importe ya registrados). Se frena la autorización automática mientras se comprueba el duplicado.`
-        : `Frenado por seguridad: Existen contradicciones materiales en los datos esenciales de la factura.`;
+        : `Frenado por seguridad: Existen contradicciones materiales en los datos esenciales de la factura.${input.contradictionDetails ? ` ${input.contradictionDetails}` : ""}`;
 
     return {
       action: "frenar",
@@ -353,7 +372,7 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
       evaluator: "jev-rules-engine",
       rules,
       rawState: buildJevState(input),
-      rawQuestions: buildJevQuestions(),
+      rawQuestions: buildJevQuestions(threshold, dailyLimit),
     };
   }
 
@@ -368,7 +387,21 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
       evaluator: "jev-rules-engine",
       rules,
       rawState: buildJevState(input),
-      rawQuestions: buildJevQuestions(),
+      rawQuestions: buildJevQuestions(threshold, dailyLimit),
+    };
+  }
+
+  if (signals.length) {
+    return {
+      action: "escalar",
+      outcome: "requires_approval",
+      reason: "senal_de_riesgo",
+      explanation: `Escalado a decisión humana: hay señales de riesgo que una persona debe revisar. ${signals.join(" ")}`,
+      confidence: 0.95,
+      evaluator: "jev-rules-engine",
+      rules,
+      rawState: buildJevState(input),
+      rawQuestions: buildJevQuestions(threshold, dailyLimit),
     };
   }
 
@@ -382,7 +415,7 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
       evaluator: "jev-rules-engine",
       rules,
       rawState: buildJevState(input),
-      rawQuestions: buildJevQuestions(),
+      rawQuestions: buildJevQuestions(threshold, dailyLimit),
     };
   }
 
@@ -396,7 +429,7 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
       evaluator: "jev-rules-engine",
       rules,
       rawState: buildJevState(input),
-      rawQuestions: buildJevQuestions(),
+      rawQuestions: buildJevQuestions(threshold, dailyLimit),
     };
   }
 
@@ -410,7 +443,7 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
       evaluator: "jev-rules-engine",
       rules,
       rawState: buildJevState(input),
-      rawQuestions: buildJevQuestions(),
+      rawQuestions: buildJevQuestions(threshold, dailyLimit),
     };
   }
 
@@ -424,7 +457,7 @@ export function evaluateJevLocally(input: JevDecisionInput): JevDecisionEvaluati
     evaluator: "jev-rules-engine",
     rules,
     rawState: buildJevState(input),
-    rawQuestions: buildJevQuestions(),
+    rawQuestions: buildJevQuestions(threshold, dailyLimit),
   };
 }
 
@@ -449,7 +482,9 @@ export async function evaluateWithJev(
   }
 
   const state = buildJevState(input);
-  const questions = buildJevQuestions();
+  const threshold = input.dailyApprovalThresholdUsd ?? 100;
+  const limit = input.dailyLimitMaxUsd ?? 1000;
+  const questions = buildJevQuestions(threshold, limit);
 
   try {
     const res = await fetch("https://api.typesafe.ai/v1/systemone", {
@@ -485,10 +520,10 @@ export async function evaluateWithJev(
     // Usar la explicación adecuada según el motivo calibrado por Jev
     let explanation = localFallback.explanation;
     if (actionChoice === "aprobar") {
-      explanation = `Aprobado automáticamente por JEV: El proveedor "${input.supplier}" es válido y el monto (${input.amountUsd.toFixed(2)} USD) no supera los 100 USD diarios.`;
+      explanation = `Aprobado automáticamente por JEV: El proveedor "${input.supplier}" es válido y el monto (${input.amountUsd.toFixed(2)} USD) no supera los ${threshold.toLocaleString("en-US")} USD diarios.`;
     } else if (actionChoice === "frenar") {
       if (reasonChoice === "limite_financiero_1000_usd") {
-        explanation = `Frenado por JEV: Supera el límite financiero absoluto de 1,000 USD diarios o el presupuesto disponible.`;
+        explanation = `Frenado por JEV: Supera el límite financiero absoluto de ${limit.toLocaleString("en-US")} USD diarios o el presupuesto disponible.`;
       } else if (reasonChoice === "factura_duplicada") {
         explanation = `Frenado por JEV: La factura parece duplicada (mismo proveedor, número e importe ya registrados). Se frena la autorización automática.`;
       } else {
@@ -496,13 +531,15 @@ export async function evaluateWithJev(
       }
     } else if (actionChoice === "escalar") {
       if (reasonChoice === "monto_mayor_100_usd") {
-        explanation = `Escalado a decisión humana por JEV: El monto (${input.amountUsd.toFixed(2)} USD) es mayor al gasto máximo permitido diario de 100 USD. Se requiere aprobación humana por el monto.`;
+        explanation = `Escalado a decisión humana por JEV: El monto (${input.amountUsd.toFixed(2)} USD) es mayor al gasto máximo permitido diario de ${threshold.toLocaleString("en-US")} USD. Se requiere aprobación humana por el monto.`;
       } else if (reasonChoice === "proveedor_nuevo") {
         explanation = `Escalado a decisión humana por JEV: Nueva compra con proveedor no conocido ("${input.supplier}").`;
       } else if (reasonChoice === "variacion_recurrente_20") {
         explanation = `Escalado a decisión humana por JEV: Pago recurrente supera en más de un 20% el promedio usual.`;
       } else if (reasonChoice === "datos_faltantes_o_contradictorios") {
         explanation = `Escalado a decisión humana por JEV: Faltan datos esenciales (${(input.missingFields ?? []).join(", ")}) y se requiere que un humano complete la información.`;
+      } else if (reasonChoice === "senal_de_riesgo") {
+        explanation = `Escalado a decisión humana por JEV: hay señales de riesgo. ${(input.reviewSignals ?? []).join(" ")}`;
       }
     }
 

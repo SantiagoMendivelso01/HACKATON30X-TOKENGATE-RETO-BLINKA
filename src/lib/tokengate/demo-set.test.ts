@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runLedger } from "./decision-engine";
 import { buildDemoCases, demoConfig, demoPolicy } from "./demo-set";
+import { buildStages, localCrossCheck } from "./pipeline";
 
 describe("set de demostración", () => {
   const cases = buildDemoCases(new Date("2026-10-17T12:00:00Z"));
@@ -39,6 +40,23 @@ describe("set de demostración", () => {
   it("bloquea el caso de presupuesto solo por presupuesto", () => {
     const budget = ledger.entries.at(-1)!;
     expect(budget.result.reasons).toEqual(["budget_available"]);
+  });
+
+  it("JEV coincide con el motor de reglas en cada factura", () => {
+    for (const e of ledger.entries) {
+      const check = localCrossCheck(e.subject, e.result, demoPolicy());
+      expect({ ref: e.subject.reference, jev: check.jev.outcome, agrees: check.agrees }).toEqual({
+        ref: e.subject.reference,
+        jev: e.result.outcome,
+        agrees: true,
+      });
+    }
+  });
+
+  it("cada regla del motor aparece en exactamente una etapa del pipeline", () => {
+    const e = ledger.entries[0]!;
+    const ids = buildStages(e.result).flatMap((s) => s.checks.map((c) => c.ruleId));
+    expect(ids.sort()).toEqual(e.result.rules.map((r) => r.ruleId).sort());
   });
 
   it("incluye los cinco casos trampa del reto", () => {

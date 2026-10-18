@@ -73,7 +73,10 @@ export function interpretRule(
     set("monthlyBudget", minor(num), "Presupuesto del periodo (USD)");
   } else if (/(nunca|jam[aá]s|m[aá]ximo|tope|no pagues m[aá]s)/.test(t) && num != null) {
     set("transactionLimit", minor(num), "Límite por transacción (USD)");
-  } else if (/(aprob|human|persona|revis|autoriz|cfo|finanzas)/.test(t) && num != null) {
+  } else if (
+    /(aprob|human|persona|revis|autoriz|permiso|consult|cfo|finanzas)/.test(t) &&
+    num != null
+  ) {
     set("approvalThreshold", minor(num), "Aprobación humana por encima de (USD)");
   }
 
@@ -95,6 +98,36 @@ export function interpretRule(
     );
   }
   return out;
+}
+
+/**
+ * Several rules in one text, as people dictate them: "Pide permiso por encima de 2.000 dólares y
+ * frena a los proveedores nuevos." Each sentence is read in order on top of the previous ones.
+ */
+export function interpretRules(
+  text: string,
+  policy: Policy,
+  fx?: Partial<Record<Currency, number>>,
+): { changes: PolicyChange[]; next: Policy; unread: string[] } {
+  const parts = text
+    .split(
+      /[.;](?=\s|$)|\n+|,?\s+y\s+(?=(?:adem[aá]s\s+)?(?:nunca|jam[aá]s|fren|bloque|el presupuesto|presupuesto|cualquier|acepta|no acept|pide|exige|sube|baja|toler|si\b|que\b))/i,
+    )
+    .map((p) => p.trim())
+    .filter((p) => p.length > 3);
+  let next = { ...policy };
+  const byField = new Map<keyof Policy, PolicyChange>();
+  const unread: string[] = [];
+  for (const p of parts) {
+    const found = interpretRule(p, next, fx);
+    if (!found.length) unread.push(p);
+    for (const c of found) {
+      const prev = byField.get(c.field);
+      byField.set(c.field, { ...c, before: prev ? prev.before : c.before });
+      next = { ...next, [c.field]: c.after };
+    }
+  }
+  return { changes: [...byField.values()], next, unread };
 }
 
 export const RULE_EXAMPLES = [

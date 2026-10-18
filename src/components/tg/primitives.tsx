@@ -11,6 +11,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouterState } from "@tanstack/react-router";
+import { HeaderArt, patternFor } from "./header-art";
 import { ruleMeta, statusMeta, toneClasses, toneDot } from "@/lib/tokengate/status";
 import { moneyParts } from "@/lib/tokengate/format";
 import type { Channel, DisplayStatus, Money as MoneyT, RuleStatus } from "@/lib/tokengate/types";
@@ -66,11 +68,16 @@ export function PageHeader({
   actions?: ReactNode;
   eyebrow?: string;
 }) {
+  const path = useRouterState({ select: (r) => r.location.pathname });
   return (
-    <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="relative isolate mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <HeaderArt
+        pattern={patternFor(path)}
+        className="-top-8 right-0 -z-10 hidden h-[calc(100%+56px)] w-[55%] md:block"
+      />
       <div className="min-w-0">
         {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
-        <h1 className="display text-3xl sm:text-[34px]">{title}</h1>
+        <h1 className="display text-[34px] sm:text-[42px]">{title}</h1>
         {subtitle && <p className="mt-2 max-w-2xl text-[15px] text-muted-foreground">{subtitle}</p>}
       </div>
       {actions && (

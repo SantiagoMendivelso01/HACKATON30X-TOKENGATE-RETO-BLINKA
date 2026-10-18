@@ -30,16 +30,19 @@ import {
   NoMoneyNotice,
   PageHeader,
   Panel,
-  RuleBadge,
   StatusBadge,
 } from "@/components/tg/primitives";
 import { useTokenGate, type TrailEvent } from "@/lib/tokengate/store";
+import { DecisionPipeline } from "@/components/tg/decision-pipeline";
 import { formatDateTime, formatMoney } from "@/lib/tokengate/format";
 import { displayStatus } from "@/lib/tokengate/status";
 import { cn } from "@/lib/utils";
 import type { AuditEvent, DecisionOutcome } from "@/lib/tokengate/types";
 
 export const Route = createFileRoute("/app/auditoria")({
+  validateSearch: (s: Record<string, unknown>): { q?: string | undefined } => ({
+    q: typeof s["q"] === "string" ? s["q"] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Auditoría y Decisiones — blinka" },
@@ -92,11 +95,12 @@ function download(name: string, rows: (string | number)[][]) {
 }
 
 function AuditoriaYDecisiones() {
-  const { trail, brokenAt, seed, mode, decisionLog, byId } = useTokenGate();
+  const { trail, brokenAt, seed, mode, decisionLog, byId, policy } = useTokenGate();
   const [tab, setTab] = useState<"decisiones" | "cadena">("decisiones");
 
   // Decisiones tab filters
-  const [q, setQ] = useState("");
+  const search = Route.useSearch();
+  const [q, setQ] = useState(search.q ?? "");
   const [outcome, setOutcome] = useState<"all" | DecisionOutcome | "human">("all");
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -137,7 +141,7 @@ function AuditoriaYDecisiones() {
       <PageHeader
         eyebrow="Explicabilidad e Integridad"
         title="Auditoría y Decisiones"
-        subtitle="Cualquier persona puede entender por qué el agente pagó, frenó o escaló cada factura leyendo su registro regla por regla."
+        subtitle="Cualquier persona puede entender por qué el agente pagó, frenó o pidió permiso con cada factura, sin abrir el código."
         actions={
           <Button
             variant="outline"
@@ -194,7 +198,7 @@ function AuditoriaYDecisiones() {
           }`}
         >
           <ScrollText className="h-4 w-4" />
-          Decisiones explicadas regla por regla ({decisionRows.length})
+          Por qué decidió, factura por factura ({decisionRows.length})
         </button>
         <button
           type="button"
@@ -206,7 +210,7 @@ function AuditoriaYDecisiones() {
           }`}
         >
           <ShieldCheck className="h-4 w-4" />
-          Cadena de auditoría con Hash ({events.length})
+          Registro firmado ({events.length})
         </button>
       </div>
 
@@ -214,7 +218,7 @@ function AuditoriaYDecisiones() {
         <Panel
           bodyClassName="p-0"
           title={<span className="flex items-center gap-2">{decisionRows.length} decisiones</span>}
-          description="Haz clic en cualquier decisión para desplegar las 14 reglas evaluadas y ver exactamente por qué se tomó esa acción."
+          description="Abre cualquier decisión para ver el recorrido paso a paso: qué revisó el agente, qué encontró y por qué pagó, frenó o pidió permiso."
         >
           <div className="grid gap-2 border-b border-border p-3 sm:grid-cols-[1fr_auto]">
             <div className="relative">
@@ -331,22 +335,12 @@ function AuditoriaYDecisiones() {
                             <b>Nota de Finanzas:</b> “{d.note}”
                           </p>
                         )}
-                        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
-                          {d.result.rules.map((r) => (
-                            <li
-                              key={r.ruleId}
-                              className="flex items-start justify-between gap-3 px-3 py-2"
-                            >
-                              <span className="min-w-0">
-                                <span className="block text-sm font-medium">{r.label}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {r.explanation}
-                                </span>
-                              </span>
-                              <RuleBadge status={r.status} />
-                            </li>
-                          ))}
-                        </ul>
+                        <DecisionPipeline
+                          subject={s}
+                          result={d.result}
+                          status={status}
+                          policy={policy}
+                        />
                       </div>
                     )}
                   </li>
