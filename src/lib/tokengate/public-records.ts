@@ -53,15 +53,28 @@ export function publicRecords(rows: Rows, fallback: OrgConfig): Rows {
     })),
   };
   const subjects: AnySubject[] = rows.subjects.map((s, i) => {
-    const legacy = (s as AnySubject & { payload?: { opcion_elegida?: { tienda_nombre?: string } } })
-      .payload;
+    const legacy = (
+      s as AnySubject & {
+        payload?: { opcion_elegida?: { tienda_nombre?: string; precio_cop?: number } };
+      }
+    ).payload;
     const merchant = s.supplier ?? legacy?.opcion_elegida?.tienda_nombre ?? "Comercio no informado";
+    // The legacy checkout adapter stores COP pesos in amountMinor, not centavos.
+    // Normalize only that source format; native subjects already use minor units.
+    const legacyPesos =
+      s.kind === "purchase" &&
+      s.amount.currency === "COP" &&
+      typeof legacy?.opcion_elegida?.precio_cop === "number";
+    const amount = {
+      ...s.amount,
+      amountMinor: legacyPesos ? s.amount.amountMinor * 100 : s.amount.amountMinor,
+    };
     const common = {
       id: `public-${i + 1}`,
       kind: s.kind,
       reference: `Registro ${i + 1}`,
       supplier: legacy?.opcion_elegida?.tienda_nombre ? merchant : publicName(merchant),
-      amount: { ...s.amount },
+      amount,
       agentId: "agent-public",
       description: "Documento anonimizado",
       category: s.category ?? "Operaciones",
