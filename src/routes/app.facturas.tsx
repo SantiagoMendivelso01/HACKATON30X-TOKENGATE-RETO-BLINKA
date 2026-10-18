@@ -1,6 +1,15 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { FileText, Search, Upload, AlertTriangle, ScanText, Loader2, Sparkles } from "lucide-react";
+import {
+  FileText,
+  FlaskConical,
+  Search,
+  Upload,
+  AlertTriangle,
+  ScanText,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { extractInvoice } from "@/lib/tokengate/ocr.functions";
 import { toast } from "sonner";
@@ -24,6 +33,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { buildDemoCases, demoConfig, demoPolicy } from "@/lib/tokengate/demo-set";
 import { EmptyState, NoMoneyNotice, PageHeader, Panel } from "@/components/tg/primitives";
 import { SubjectTable } from "@/components/tg/subject-table";
 import { DecisionSheet } from "@/components/tg/decision-detail";
@@ -133,6 +153,85 @@ const DEMO_PRESETS: {
   },
 ];
 
+/** Loads the fictional invoice set (src/lib/tokengate/demo-set.ts) with its suppliers and policy. */
+function LoadDemoSet() {
+  const { addInvoice, saveConfig, savePolicy, seed, byId } = useTokenGate();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const cases = buildDemoCases();
+  const missing = cases.filter((c) => !byId.has(c.invoice.id));
+  const traps = cases.filter((c) => c.trap).length;
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { id: _id, policy: _policy, ...config } = seed;
+      if (
+        !(await saveConfig(
+          demoConfig(config),
+          "Set de demostración: proveedores con contrato y pagos previos del mes",
+        ))
+      )
+        return;
+      if (
+        !(await savePolicy(
+          demoPolicy(),
+          "Set de demostración: política base con los proveedores registrados aprobados",
+        ))
+      )
+        return;
+      for (const c of missing) if (!(await addInvoice(c.invoice))) return;
+      toast.success(`${missing.length} facturas del set evaluadas por el agente.`);
+      setOpen(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        className="h-10"
+        disabled={missing.length === 0}
+        title={missing.length === 0 ? "El set de demostración ya está cargado" : undefined}
+        onClick={() => setOpen(true)}
+      >
+        <FlaskConical className="h-4 w-4" />
+        {missing.length === 0 ? "Set de demostración cargado" : "Cargar set de demostración"}
+      </Button>
+      <AlertDialog open={open} onOpenChange={(o) => !loading && setOpen(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cargar set de demostración</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cases.length} facturas ficticias ({cases.length - traps} normales y {traps} casos
+              trampa: duplicado, proveedor nuevo, no cuadra con el contrato, monto que pide
+              aprobación, presupuesto insuficiente, suplantación, cambio de cuenta, instrucciones
+              escondidas y datos faltantes). También guarda la configuración del set (proveedores
+              con contrato y USD 41,500 ya pagados este mes) y una nueva versión de la política
+              base. Las versiones anteriores quedan en la auditoría.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={loading}
+              onClick={(ev) => {
+                ev.preventDefault();
+                void load();
+              }}
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Cargar {missing.length} facturas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 function Facturas() {
   const { evaluatedInvoices, byId, seed } = useTokenGate();
   const search = Route.useSearch();
@@ -182,10 +281,13 @@ function Facturas() {
         subtitle="El agente lee quién cobra, cuánto, en qué moneda y para cuándo; luego decide si pagar, frenar o pedir permiso según tus reglas."
         eyebrow={seed.inbox ? `Buzón activo · ${seed.inbox}` : "Bandeja de entrada"}
         actions={
-          <Button className="h-10" onClick={() => navigate({ search: { upload: true } })}>
-            <Upload className="h-4 w-4" />
-            Cargar factura (OCR / Manual)
-          </Button>
+          <>
+            <LoadDemoSet />
+            <Button className="h-10" onClick={() => navigate({ search: { upload: true } })}>
+              <Upload className="h-4 w-4" />
+              Cargar factura (OCR / Manual)
+            </Button>
+          </>
         }
       />
 
