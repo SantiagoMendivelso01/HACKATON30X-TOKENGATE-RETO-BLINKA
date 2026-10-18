@@ -10,19 +10,21 @@ import {
   StatusBadge,
 } from "@/components/tg/primitives";
 import { DecisionSheet } from "@/components/tg/decision-detail";
-
+import { AgentFlow } from "@/components/tg/agent-flow";
 import { Waves } from "@/components/tg/line-art";
 import { sevMeta } from "@/components/tg/severity";
 import { useTokenGate, type EvaluatedSubject } from "@/lib/tokengate/store";
 import { formatBase, formatDateTime } from "@/lib/tokengate/format";
 import { needsAttention, statusMeta } from "@/lib/tokengate/status";
-import { FLAG_LABEL, mainFlag } from "@/lib/tokengate/pipeline";
+import { FLAG_LABEL, localCrossCheck, mainFlag } from "@/lib/tokengate/pipeline";
 import { cn } from "@/lib/utils";
 import type { AlertSeverity, DecisionOutcome, RuleId } from "@/lib/tokengate/types";
 
 export const Route = createFileRoute("/app/")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Dashboard — blinka" },
       {
         name: "description",
@@ -269,7 +271,7 @@ function DailyChart({ regs }: { regs: EvaluatedSubject[] }) {
 }
 
 function Dashboard() {
-  const { all, alerts, seed, policy, ledger } = useTokenGate();
+  const { all, alerts, seed, policy, ledger, trail } = useTokenGate();
   const [open, setOpen] = useState<string | null>(null);
   const [range, setRange] = useState<"all" | "7d">("all");
   let regs = all;
@@ -297,6 +299,8 @@ function Dashboard() {
       ),
   ).length;
   const processed = regs.reduce((s, e) => s + e.baseMinor, 0);
+  // JEV verifies every decision with its typed schema; count where both agree.
+  const jevAgree = regs.filter((e) => localCrossCheck(e.subject, e.result, policy).agrees).length;
 
   // Resultado final por estado
   const finals = [
@@ -438,6 +442,17 @@ function Dashboard() {
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </span>
       </Link>
+
+      <AgentFlow
+        received={n}
+        read={regs.filter((e) => e.subject.kind === "invoice").length}
+        rules={14}
+        jevAgree={jevAgree}
+        paid={finals[0]!.n}
+        asked={queue.length}
+        stopped={regs.filter((e) => e.state === "blocked" || e.state === "rejected").length}
+        events={trail.length}
+      />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {chip(range === "all", "Todo el periodo", () => setRange("all"))}

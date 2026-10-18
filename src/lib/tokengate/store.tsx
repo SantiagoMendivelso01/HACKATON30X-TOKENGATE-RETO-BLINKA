@@ -268,6 +268,9 @@ function useStoreValue(rows: Rows, mode: StorageMode) {
       addInvoice: (invoice: Invoice) => dispatch({ type: "addInvoice", invoice }),
       addPurchase: (purchase: Purchase) => dispatch({ type: "addPurchase", purchase }),
       logEvent: (event: Omit<AuditEvent, "id" | "at">) => dispatch({ type: "audit", event }),
+      /** Approver fills the missing fields; the subject is re-evaluated by the engine. */
+      completeFields: (subjectId: string, values: Record<string, string>, note?: string) =>
+        dispatch({ type: "completeFields", subjectId, values, note }),
     };
   }, [state, mode, dispatch]);
 }

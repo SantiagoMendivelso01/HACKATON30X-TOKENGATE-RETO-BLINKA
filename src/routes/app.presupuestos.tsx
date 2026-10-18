@@ -7,6 +7,8 @@ import type { Currency } from "@/lib/tokengate/types";
 export const Route = createFileRoute("/app/presupuestos")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Presupuestos — blinka" },
       {
         name: "description",

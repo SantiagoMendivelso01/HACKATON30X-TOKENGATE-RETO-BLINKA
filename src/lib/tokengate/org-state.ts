@@ -2,6 +2,7 @@
 // Every action returns the next state plus the rows it adds, so the store can save them first
 // and only show the change once the database confirms it.
 import { formatMoney } from "./format";
+import { completeSubject } from "./missing-fields";
 import { ORG } from "./org";
 import type {
   AnySubject,
@@ -64,6 +65,12 @@ export type Action =
   | { type: "saveConfig"; config: OrgConfig; summary: string }
   | { type: "addInvoice"; invoice: Invoice }
   | { type: "addPurchase"; purchase: Purchase }
+  | {
+      type: "completeFields";
+      subjectId: string;
+      values: Record<string, string>;
+      note?: string | undefined;
+    }
   | { type: "audit"; event: Omit<AuditEvent, "id" | "at"> };
 
 const byAt = (a: { at: string }, b: { at: string }) => a.at.localeCompare(b.at);
@@ -255,6 +262,28 @@ export function apply(state: State, a: Action): { next: State; writes: Rows } {
             summary: `Solicitud de compra ${purchase.reference} registrada`,
             reason: `${purchase.supplier} · ${formatMoney(purchase.amount)}`,
             subjectId: purchase.id,
+          }),
+          ...o.audit,
+        ],
+      });
+    }
+    case "completeFields": {
+      const prev = [...o.invoices, ...o.purchases].find((s) => s.id === a.subjectId);
+      if (!prev) return { next: state, writes };
+      const updated = completeSubject(prev, a.values);
+      const filled = prev.missingFields.filter((l) => !updated.missingFields.includes(l));
+      writes.subjects.push(updated);
+      return put({
+        invoices: o.invoices.map((s) => (s.id === updated.id ? (updated as Invoice) : s)),
+        purchases: o.purchases.map((s) => (s.id === updated.id ? (updated as Purchase) : s)),
+        audit: [
+          event({
+            type: "human_review",
+            actor: user,
+            actorKind: "human",
+            summary: `${prev.reference}: datos completados (${filled.join(", ") || "ninguno"}) y reevaluada`,
+            reason: a.note || undefined,
+            subjectId: prev.id,
           }),
           ...o.audit,
         ],

@@ -140,7 +140,7 @@ export function AgentFlow({
               <Node icon={Gavel} />
               <div className="relative mt-3 flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/75 p-4 backdrop-blur">
                 <Numeral n={5} />
-                <span className="pr-14 text-[15px] font-medium">El agente decide</span>
+                <span className="text-[15px] font-medium">El agente decide</span>
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   <Outcome to="/app/facturas" n={paid} label="Pagadas" tone="success" />
                   <Outcome
@@ -226,7 +226,7 @@ function StepCard({ step: s, index }: { step: Step; index: number }) {
         )}
       >
         <Numeral n={index + 1} />
-        <span className="pr-14 text-[15px] font-medium group-hover:text-primary">{s.title}</span>
+        <span className="text-[15px] font-medium group-hover:text-primary">{s.title}</span>
         <span className="mt-2 flex flex-wrap items-baseline gap-x-1.5">
           <span className={cn("display text-[40px] leading-none", s.accent && "text-primary")}>
             <CountUp value={s.value} />

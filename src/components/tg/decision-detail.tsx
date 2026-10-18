@@ -13,6 +13,9 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { currentValue, specFor } from "@/lib/tokengate/missing-fields";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -94,13 +97,16 @@ function highlight(raw: string) {
 }
 
 export function DecisionDetail({ subjectId }: { subjectId: string }) {
-  const { byId, review, seed, policy } = useTokenGate();
+  const { byId, review, completeFields, seed, policy } = useTokenGate();
   const [pending, setPending] = useState<HumanAction | null>(null);
   const [note, setNote] = useState("");
+  const [values, setValues] = useState<Record<string, string>>({});
   const [showInvoice, setShowInvoice] = useState(false);
   const e = byId.get(subjectId);
   if (!e) return <p className="text-sm text-muted-foreground">Registro no encontrado.</p>;
   const { subject: s, result, status } = e;
+  const filling = pending === "info_requested" && s.missingFields.length > 0;
+  const allValid = s.missingFields.every((l) => !specFor(l).validate(values[l] ?? ""));
   const meta = statusMeta[status];
   const verdict = VERDICT[status];
   const flagged = result.rules.filter((r) => r.status === "failed" || r.status === "needs_review");
@@ -188,23 +194,43 @@ export function DecisionDetail({ subjectId }: { subjectId: string }) {
               <Ban className="h-4 w-4" />
               Rechazar
             </Button>
-            {status === "requires_approval" && (
+            {(status === "requires_approval" || s.missingFields.length > 0) && (
               <Button
                 variant="outline"
                 className="h-11"
-                onClick={() => setPending("info_requested")}
+                onClick={() => {
+                  setValues(
+                    Object.fromEntries(s.missingFields.map((l) => [l, currentValue(s, l)])),
+                  );
+                  setPending("info_requested");
+                }}
               >
                 <MessageSquareMore className="h-4 w-4" />
-                Pedir más datos
+                {s.missingFields.length > 0 ? "Completar datos" : "Pedir más datos"}
               </Button>
             )}
           </div>
         </section>
       ) : status === "blocked" ? (
-        <p className="flex items-start gap-2 rounded-2xl border border-border bg-muted/60 p-3 text-sm text-muted-foreground">
-          <Lock className="mt-0.5 h-4 w-4 shrink-0" />
-          {verdict.next}
-        </p>
+        <div className="space-y-2">
+          <p className="flex items-start gap-2 rounded-2xl border border-border bg-muted/60 p-3 text-sm text-muted-foreground">
+            <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+            {verdict.next}
+          </p>
+          {s.missingFields.length > 0 && (
+            <Button
+              variant="outline"
+              className="h-11"
+              onClick={() => {
+                setValues(Object.fromEntries(s.missingFields.map((l) => [l, currentValue(s, l)])));
+                setPending("info_requested");
+              }}
+            >
+              <MessageSquareMore className="h-4 w-4" />
+              Completar datos
+            </Button>
+          )}
+        </div>
       ) : null}
 
       {/* 3. Cómo lo decidió */}
@@ -301,11 +327,42 @@ export function DecisionDetail({ subjectId }: { subjectId: string }) {
         {pending && (
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>{confirmCopy[pending].title}</AlertDialogTitle>
+              <AlertDialogTitle>
+                {filling ? "Completar los datos que faltan" : confirmCopy[pending].title}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                {s.reference} · {s.supplier} · {formatMoney(s.amount)}. {confirmCopy[pending].body}
+                {s.reference} · {s.supplier} · {formatMoney(s.amount)}.{" "}
+                {filling
+                  ? "Llena los datos faltantes; el agente volverá a evaluar el pago con tus reglas."
+                  : confirmCopy[pending].body}
               </AlertDialogDescription>
             </AlertDialogHeader>
+            {filling && (
+              <div className="space-y-3">
+                {s.missingFields.map((label, i) => {
+                  const spec = specFor(label);
+                  const v = values[label] ?? "";
+                  const err = v ? spec.validate(v) : null;
+                  return (
+                    <div key={label} className="space-y-1">
+                      <Label htmlFor={`mf-${i}`}>
+                        {label} <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id={`mf-${i}`}
+                        type={spec.input}
+                        value={v}
+                        placeholder={spec.placeholder}
+                        maxLength={200}
+                        aria-invalid={!!err}
+                        onChange={(ev) => setValues((p) => ({ ...p, [label]: ev.target.value }))}
+                      />
+                      {err && <p className="text-xs text-destructive">{err}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <div className="flex items-center justify-between gap-2">
               <label className="text-sm font-medium" htmlFor="review-note">
                 ¿Por qué? (opcional, queda en el registro)
@@ -325,15 +382,21 @@ export function DecisionDetail({ subjectId }: { subjectId: string }) {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction
+                disabled={filling && !allValid}
                 onClick={async () => {
                   const action = pending;
+                  const n = note.trim() || undefined;
                   setNote("");
                   setPending(null);
-                  if (await review(s.id, action, note.trim() || undefined))
-                    toast.success(confirmCopy[action].toast);
+                  if (filling) {
+                    if (await completeFields(s.id, values, n))
+                      toast.success("Datos completados. El agente reevaluó el pago.");
+                    return;
+                  }
+                  if (await review(s.id, action, n)) toast.success(confirmCopy[action].toast);
                 }}
               >
-                {confirmCopy[pending].cta}
+                {filling ? "Guardar y reevaluar" : confirmCopy[pending].cta}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

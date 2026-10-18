@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/app/aprobaciones")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Por aprobar — blinka" },
       { name: "description", content: "Facturas escaladas que requieren permiso de una persona." },
       { property: "og:title", content: "Por aprobar — blinka" },

@@ -67,6 +67,8 @@ export const Route = createFileRoute("/app/facturas")({
   }),
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Facturas — blinka" },
       {
         name: "description",
@@ -236,7 +238,7 @@ function LoadDemoSet() {
 }
 
 function Facturas() {
-  const { evaluatedInvoices, byId, seed } = useTokenGate();
+  const { all, byId, seed } = useTokenGate();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/app/facturas" });
   const [q, setQ] = useState(search.q ?? "");
@@ -248,7 +250,7 @@ function Facturas() {
 
   const rows = useMemo(() => {
     const t = q.trim().toLowerCase();
-    const list = evaluatedInvoices.filter((e) => {
+    const list = all.filter((e) => {
       const s = e.subject;
       return (
         (!t ||
@@ -259,14 +261,16 @@ function Facturas() {
         (currency === "all" || s.amount.currency === currency)
       );
     });
-    return [...list].sort((a, b) =>
-      sort === "amount_desc"
+    return [...list].sort((a, b) => {
+      const dateA = a.subject.kind === "invoice" ? a.subject.dueDate : a.subject.requestedAt;
+      const dateB = b.subject.kind === "invoice" ? b.subject.dueDate : b.subject.requestedAt;
+      return sort === "amount_desc"
         ? b.subject.amount.amountMinor - a.subject.amount.amountMinor
         : sort === "due_asc"
-          ? a.subject.dueDate.localeCompare(b.subject.dueDate)
-          : b.subject.dueDate.localeCompare(a.subject.dueDate),
-    );
-  }, [evaluatedInvoices, q, status, currency, sort]);
+          ? dateA.localeCompare(dateB)
+          : dateB.localeCompare(dateA);
+    });
+  }, [all, q, status, currency, sort]);
 
   const pages = Math.max(1, Math.ceil(rows.length / PAGE));
   const visible = rows.slice(page * PAGE, page * PAGE + PAGE);
@@ -296,7 +300,14 @@ function Facturas() {
 
       <Panel
         bodyClassName="p-0"
-        title={<span className="flex items-center gap-2">{rows.length} facturas evaluadas</span>}
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            {rows.length} registros evaluados ·{" "}
+            {rows.filter((e) => e.subject.kind === "invoice").length} facturas ·{" "}
+            {rows.filter((e) => e.subject.kind === "purchase").length}{" "}
+            {rows.filter((e) => e.subject.kind === "purchase").length === 1 ? "compra" : "compras"}
+          </span>
+        }
       >
         <div className="grid gap-2 border-b border-border p-3 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto]">
           <div className="relative">
@@ -367,8 +378,8 @@ function Facturas() {
           <SubjectTable
             rows={visible}
             onOpen={setOpen}
-            referenceLabel="Factura"
-            dateLabel="Vence"
+            referenceLabel="Factura / Compra"
+            dateLabel="Vence / Solicitada"
           />
         ) : (
           <EmptyState

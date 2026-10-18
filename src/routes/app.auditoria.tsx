@@ -40,11 +40,19 @@ import { cn } from "@/lib/utils";
 import type { AuditEvent, DecisionOutcome } from "@/lib/tokengate/types";
 
 export const Route = createFileRoute("/app/auditoria")({
-  validateSearch: (s: Record<string, unknown>): { q?: string | undefined } => ({
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): {
+    q?: string | undefined;
+    tab?: "decisiones" | "cadena" | undefined;
+  } => ({
     q: typeof s["q"] === "string" ? s["q"] : undefined,
+    tab: s["tab"] === "cadena" ? "cadena" : s["tab"] === "decisiones" ? "decisiones" : undefined,
   }),
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Auditoría y Decisiones — blinka" },
       {
         name: "description",
@@ -96,10 +104,10 @@ function download(name: string, rows: (string | number)[][]) {
 
 function AuditoriaYDecisiones() {
   const { trail, brokenAt, seed, mode, decisionLog, byId, policy } = useTokenGate();
-  const [tab, setTab] = useState<"decisiones" | "cadena">("decisiones");
+  const search = Route.useSearch();
+  const [tab, setTab] = useState<"decisiones" | "cadena">(search.tab ?? "decisiones");
 
   // Decisiones tab filters
-  const search = Route.useSearch();
   const [q, setQ] = useState(search.q ?? "");
   const [outcome, setOutcome] = useState<"all" | DecisionOutcome | "human">("all");
   const [expanded, setExpanded] = useState<string | null>(null);

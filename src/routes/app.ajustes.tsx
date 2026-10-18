@@ -47,6 +47,8 @@ import type { Currency, DisplayStatus, OrgConfig, Policy, Supplier } from "@/lib
 export const Route = createFileRoute("/app/ajustes")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Reglas y Ajustes — blinka" },
       {
         name: "description",
