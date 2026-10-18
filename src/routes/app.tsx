@@ -1,4 +1,5 @@
-import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Database, FlaskConical } from "lucide-react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar, navGroups } from "@/components/tg/app-sidebar";
@@ -6,6 +7,8 @@ import { ThemeToggle } from "@/components/tg/theme-toggle";
 import { TokenGateProvider, useTokenGate } from "@/lib/tokengate/store";
 import { loadOrgState } from "@/lib/tokengate/db.functions";
 import { formatBase } from "@/lib/tokengate/format";
+import { getSimUser } from "@/lib/tokengate/sim-auth";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/app")({
   head: () => ({
@@ -29,13 +32,27 @@ export const Route = createFileRoute("/app")({
 
 function AppLayout() {
   const path = useRouterState({ select: (r) => r.location.pathname });
+  const navigate = useNavigate();
   const items = navGroups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.label })));
   const current = items.filter((i) =>
     i.url === "/app" ? path.replace(/\/$/, "") === "/app" : path.startsWith(i.url),
   )[0];
   const loaded = Route.useLoaderData();
 
+  // Sesión simulada: vive en localStorage, así que solo se verifica en el navegador.
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
+  useEffect(() => {
+    const ok = getSimUser() !== null;
+    setHasSession(ok);
+    setSessionChecked(true);
+    if (!ok) navigate({ to: "/login", replace: true });
+  }, [navigate]);
+
   if (!loaded.ok) return <StorageError message={loaded.error} />;
+  if (!sessionChecked || !hasSession) {
+    return <div className="min-h-screen bg-background" aria-label="Verificando sesión" />;
+  }
 
   return (
     <TokenGateProvider rows={loaded.rows} mode={loaded.mode}>
@@ -78,12 +95,12 @@ function StorageError({ message }: { message: string }) {
         <h1 className="display mt-3 text-3xl text-foreground">No se pudieron cargar los datos</h1>
         <p className="mt-3 text-sm text-muted-foreground">{message}</p>
         <div className="mt-6">
-          <button
+          <Button
             onClick={() => window.location.reload()}
             className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Reintentar
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -97,12 +114,12 @@ function HeaderPills() {
       <span
         className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground"
         title={
-          mode === "supabase"
-            ? "Cada acción se guarda en Supabase antes de mostrarse."
-            : "Sin claves de Supabase: los datos se pierden al recargar."
+          mode === "readonly"
+            ? "Datos reales anonimizados. Los cambios son simulados y no alteran los originales."
+            : "Los cambios se pierden al recargar."
         }
       >
-        <Database className="h-3.5 w-3.5" /> {mode === "supabase" ? "Supabase" : "Sin guardar"}
+        <Database className="h-3.5 w-3.5" /> {mode === "readonly" ? "Datos anonimizados" : "Sin guardar"}
       </span>
       <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
         <FlaskConical className="h-3.5 w-3.5" /> Pagos en sandbox

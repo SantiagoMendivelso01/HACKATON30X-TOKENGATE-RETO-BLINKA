@@ -1,7 +1,8 @@
 import { Wordmark } from "@/components/tg/logo";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { SIM_USER, getSimUser, signInSimulated } from "@/lib/tokengate/sim-auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -41,8 +42,25 @@ function GoogleIcon() {
 }
 
 function Login() {
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"idle" | "connecting" | "account">("idle");
   const navigate = useNavigate();
+
+  // Si ya hay sesión simulada, ir directo al panel.
+  useEffect(() => {
+    if (getSimUser()) navigate({ to: "/app", replace: true });
+  }, [navigate]);
+
+  const startGoogleFlow = () => {
+    setStep("connecting");
+    // Flujo simulado: no hay autenticación real, solo se queman los datos.
+    window.setTimeout(() => setStep("account"), 900);
+  };
+
+  const confirmAccount = () => {
+    signInSimulated();
+    navigate({ to: "/app" });
+  };
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm rounded-2xl border border-border/70 bg-card p-8 shadow-soft">
@@ -53,18 +71,43 @@ function Login() {
         <p className="mt-2 text-sm text-muted-foreground">
           Entra para revisar decisiones, reglas y aprobaciones.
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            setLoading(true);
-            setTimeout(() => navigate({ to: "/app" }), 700);
-          }}
-          disabled={loading}
-          className="mt-8 flex h-11 w-full items-center justify-center gap-3 rounded-full border border-input bg-background text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-        >
-          <GoogleIcon />
-          {loading ? "Conectando…" : "Continuar con Google"}
-        </button>
+
+        {step === "account" ? (
+          <div className="mt-8" role="dialog" aria-label="Elegir cuenta de Google">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Elegir cuenta · simulado
+            </p>
+            <button
+              type="button"
+              onClick={confirmAccount}
+              className="mt-3 flex w-full items-center gap-3 rounded-xl border border-input bg-background p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
+                {SIM_USER.initials}
+              </span>
+              <span className="flex min-w-0 flex-col leading-tight">
+                <span className="truncate text-sm font-medium text-foreground">
+                  {SIM_USER.name}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">{SIM_USER.email}</span>
+              </span>
+            </button>
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Demostración: no se valida ninguna cuenta real.
+            </p>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={startGoogleFlow}
+            disabled={step === "connecting"}
+            className="mt-8 flex h-11 w-full items-center justify-center gap-3 rounded-full border border-input bg-background text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+          >
+            <GoogleIcon />
+            {step === "connecting" ? "Conectando con Google…" : "Continuar con Google"}
+          </button>
+        )}
+
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Cada decisión tiene reglas, límites y una razón detrás.
         </p>

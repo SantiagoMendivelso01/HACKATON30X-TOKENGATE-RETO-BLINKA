@@ -10,16 +10,21 @@ import {
   StatusBadge,
 } from "@/components/tg/primitives";
 import { DecisionSheet } from "@/components/tg/decision-detail";
+import { AgentFlow } from "@/components/tg/agent-flow";
+import { Waves } from "@/components/tg/line-art";
 import { sevMeta } from "@/components/tg/severity";
 import { useTokenGate, type EvaluatedSubject } from "@/lib/tokengate/store";
 import { formatBase, formatDateTime } from "@/lib/tokengate/format";
 import { needsAttention, statusMeta } from "@/lib/tokengate/status";
+import { FLAG_LABEL, localCrossCheck, mainFlag } from "@/lib/tokengate/pipeline";
 import { cn } from "@/lib/utils";
 import type { AlertSeverity, DecisionOutcome, RuleId } from "@/lib/tokengate/types";
 
 export const Route = createFileRoute("/app/")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Dashboard — blinka" },
       {
         name: "description",
@@ -266,7 +271,7 @@ function DailyChart({ regs }: { regs: EvaluatedSubject[] }) {
 }
 
 function Dashboard() {
-  const { all, alerts, seed, policy, ledger } = useTokenGate();
+  const { all, alerts, seed, policy, ledger, trail } = useTokenGate();
   const [open, setOpen] = useState<string | null>(null);
   const [range, setRange] = useState<"all" | "7d">("all");
   let regs = all;
@@ -294,6 +299,8 @@ function Dashboard() {
       ),
   ).length;
   const processed = regs.reduce((s, e) => s + e.baseMinor, 0);
+  // JEV verifies every decision with its typed schema; count where both agree.
+  const jevAgree = regs.filter((e) => localCrossCheck(e.subject, e.result, policy).agrees).length;
 
   // Resultado final por estado
   const finals = [
@@ -316,7 +323,12 @@ function Dashboard() {
   for (const e of regs)
     for (const r of e.result.rules) {
       if (r.status !== "failed" && r.status !== "needs_review") continue;
-      const v = reasons.get(r.ruleId) ?? { label: r.label, n: 0, failed: 0, review: 0 };
+      const v = reasons.get(r.ruleId) ?? {
+        label: FLAG_LABEL[r.ruleId],
+        n: 0,
+        failed: 0,
+        review: 0,
+      };
       v.n++;
       if (r.status === "failed") v.failed++;
       else v.review++;
@@ -356,33 +368,64 @@ function Dashboard() {
 
   return (
     <>
-      <section className="relative mb-5 overflow-hidden rounded-[20px] border border-border bg-gradient-to-br from-card to-background p-7 sm:p-9">
+      <section className="relative mb-5 overflow-hidden rounded-[20px] border border-border bg-gradient-to-br from-card to-background p-6 sm:p-8">
         <Waves />
-        <div className="relative max-w-xl">
-          <p className="eyebrow mb-3">
-            KPIs del agente · {seed.name} · {seed.period}
-          </p>
-          <h1 className="display text-[40px] sm:text-[44px]">Tu agente paga solo lo que debe.</h1>
-          <p className="mt-3 text-[15px] text-muted-foreground">
-            Seguridad, autonomía y explicabilidad —los tres criterios del reto— medidos en vivo
-            sobre {n} decisiones de facturas y compras.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Button asChild>
-              <Link to="/app/facturas" search={{ upload: true }}>
-                <FilePlus2 className="h-4 w-4" />
-                Cargar factura
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/app/aprobaciones">
-                Aprobaciones · {queue.length}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-xl">
+            <p className="eyebrow mb-3">
+              {seed.name} · {seed.period}
+            </p>
+            <h1 className="display text-[36px] sm:text-[42px]">Tu agente paga solo lo que debe.</h1>
+            <p className="mt-3 text-[15px] text-muted-foreground">
+              Revisó {n} {n === 1 ? "factura" : "facturas"}: pagó las que cumplen tus reglas, frenó
+              las que no y te deja a ti las excepciones.
+            </p>
           </div>
+          {queue.length > 0 ? (
+            <Link
+              to="/app/aprobaciones"
+              className="lift group flex max-w-sm items-center gap-4 rounded-2xl border-2 border-primary/35 bg-card p-4"
+            >
+              <span className="display flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-[28px] text-primary-foreground">
+                {queue.length}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[15px] font-semibold">
+                  {queue.length === 1 ? "Un pago espera" : `${queue.length} pagos esperan`} tu
+                  decisión
+                </span>
+                <span className="mt-0.5 flex items-center gap-1 text-sm text-primary">
+                  Revisar ahora
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </span>
+            </Link>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <Link to="/app/facturas" search={{ upload: true }}>
+                  <FilePlus2 className="h-4 w-4" />
+                  Cargar factura
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/app/ajustes">Ver mis reglas</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </section>
+
+      <AgentFlow
+        received={n}
+        read={regs.filter((e) => e.subject.kind === "invoice").length}
+        rules={14}
+        jevAgree={jevAgree}
+        paid={finals[0]!.n}
+        asked={queue.length}
+        stopped={regs.filter((e) => e.state === "blocked" || e.state === "rejected").length}
+        events={trail.length}
+      />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {chip(range === "all", "Todo el periodo", () => setRange("all"))}
@@ -455,7 +498,7 @@ function Dashboard() {
             className="sm:col-span-2"
             label="Monto procesado"
             value={<Money animate value={{ amountMinor: processed, currency: "USD" }} />}
-            hint={`${n} operaciones · ${new Set(regs.map((e) => e.subject.amount.currency)).size} monedas · ${seed.agents.length} agentes`}
+            hint={`${n} facturas evaluadas · ${new Set(regs.map((e) => e.subject.amount.currency)).size} monedas · ${seed.suppliers.length} contratos activos`}
           />
         </div>
       </div>
@@ -666,7 +709,7 @@ function Dashboard() {
             })}
           </ul>
           <Button variant="outline" size="sm" className="mt-4 w-fit" asChild>
-            <Link to="/app/alertas">Ver alertas</Link>
+            <Link to="/app/auditoria">Ver auditoría y decisiones</Link>
           </Button>
         </Card>
       </div>
@@ -731,9 +774,7 @@ function ActivityList({
                 {e.subject.supplier}
               </span>
               <span className="block truncate text-xs text-muted-foreground">
-                {e.result.rules.find((r) => r.status === "failed" || r.status === "needs_review")
-                  ?.label ?? statusMeta[e.status].label}{" "}
-                · {formatDateTime(e.evaluatedAt)}
+                {mainFlag(e.result) ?? statusMeta[e.status].label} · {formatDateTime(e.evaluatedAt)}
               </span>
             </span>
             <span className="flex flex-col items-end gap-1">
@@ -744,26 +785,5 @@ function ActivityList({
         </li>
       ))}
     </ul>
-  );
-}
-
-function Waves() {
-  const paths = Array.from({ length: 90 }, (_, i) => {
-    const t = i / 89,
-      e = t * t * (3 - 2 * t);
-    return `M${(250 + t * 70).toFixed(1)} -20 C ${(420 - e * 210).toFixed(1)} 150, ${(150 + e * 260).toFixed(1)} 210, ${(40 + e * 640).toFixed(1)} ${(460 - e * 120).toFixed(1)}`;
-  });
-  return (
-    <svg
-      className="pointer-events-none absolute -right-10 -top-8 hidden h-[calc(100%+64px)] w-[52%] sm:block"
-      viewBox="0 0 600 420"
-      preserveAspectRatio="xMidYMid slice"
-      fill="none"
-      aria-hidden
-    >
-      {paths.map((d, i) => (
-        <path key={i} d={d} stroke="#5f6f93" strokeWidth={0.7} strokeOpacity={0.5} />
-      ))}
-    </svg>
   );
 }

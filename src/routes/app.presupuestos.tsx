@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { NoMoneyNotice, PageHeader, Panel, Term } from "@/components/tg/primitives";
+import { Money, NoMoneyNotice, PageHeader, Panel, Term } from "@/components/tg/primitives";
 import { useTokenGate } from "@/lib/tokengate/store";
-import { formatBase, formatMoney, moneyParts } from "@/lib/tokengate/format";
+import { formatBase, formatMoney } from "@/lib/tokengate/format";
 import type { Currency } from "@/lib/tokengate/types";
 
 export const Route = createFileRoute("/app/presupuestos")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Presupuestos — blinka" },
       {
         name: "description",
@@ -33,10 +35,11 @@ function Bars({ rows }: { rows: { name: string; paid: number; pending: number }[
   const max = Math.max(1, ...rows.map((r) => r.paid + r.pending));
   return (
     <ul className="space-y-2.5">
-      {rows.map((r) => (
+      {rows.map((r, i) => (
         <li
           key={r.name}
-          className="grid grid-cols-[minmax(110px,30%)_1fr_auto] items-center gap-3 text-sm"
+          style={{ animationDelay: `${i * 60}ms` }}
+          className="tg-row grid grid-cols-[minmax(110px,30%)_1fr_auto] items-center gap-3 text-sm"
           title={`${r.name}: pagado ${formatBase(r.paid)}, reservado ${formatBase(r.pending)}`}
         >
           <span className="truncate text-foreground/85">{r.name}</span>
@@ -57,7 +60,7 @@ function Bars({ rows }: { rows: { name: string; paid: number; pending: number }[
 }
 
 function Presupuestos() {
-  const { policy, all, ledger, seed, agentName } = useTokenGate();
+  const { policy, all, ledger, seed } = useTokenGate();
   const P = policy.monthlyBudget;
   const prev = seed.baselineUsedMinor;
   const paidBatch = ledger.spentMinor - prev;
@@ -66,7 +69,6 @@ function Presupuestos() {
     .reduce((s, e) => s + e.baseMinor, 0);
   const pct = (v: number) => `${Math.max(0, (v / P) * 100).toFixed(2)}%`;
   const used = Math.round(((ledger.spentMinor + ledger.committedMinor) / P) * 100);
-  const p = moneyParts({ amountMinor: Math.max(ledger.availableMinor, 0), currency: "USD" });
 
   const group = (key: (e: (typeof all)[number]) => string) => {
     const m = new Map<string, { name: string; paid: number; pending: number }>();
@@ -112,74 +114,75 @@ function Presupuestos() {
         subtitle="Lo pagado y lo reservado por aprobaciones salen del mismo presupuesto. Si una factura no cabe, el agente la bloquea."
       />
 
-      <Panel>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="eyebrow mb-1">Disponible</p>
-            <p className="display text-5xl text-primary">
-              <span className="money">
-                <span className="cur">{p.cur}</span>
-                {p.whole}
-                <span className="cents">.{p.cents}</span>
-              </span>
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              de {formatBase(P)} · usado o reservado {used}%
-            </p>
+      <Panel className="relative overflow-hidden">
+        <div className="relative">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="eyebrow mb-1">Disponible</p>
+              <p className="display text-[64px] leading-none text-primary">
+                <Money
+                  animate
+                  value={{ amountMinor: Math.max(ledger.availableMinor, 0), currency: "USD" }}
+                />
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                de {formatBase(P)} · usado o reservado {used}%
+              </p>
+            </div>
+            <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-4">
+              <div>
+                <dt className="text-xs text-muted-foreground">Pagos previos</dt>
+                <dd className="tabular font-medium">{formatBase(prev)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">
+                  <Term hint="Autorizado por el agente o aprobado por Finanzas y enviado al sandbox.">
+                    Pagado en el lote
+                  </Term>
+                </dt>
+                <dd className="tabular font-medium">{formatBase(paidBatch)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">
+                  <Term hint="Operaciones que esperan una decisión humana; su importe queda apartado.">
+                    Reservado
+                  </Term>
+                </dt>
+                <dd className="tabular font-medium">{formatBase(ledger.committedMinor)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Bloqueado o rechazado</dt>
+                <dd className="tabular font-medium">{formatBase(blocked)}</dd>
+              </div>
+            </dl>
           </div>
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-4">
-            <div>
-              <dt className="text-xs text-muted-foreground">Pagos previos</dt>
-              <dd className="tabular font-medium">{formatBase(prev)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">
-                <Term hint="Autorizado por el agente o aprobado por Finanzas y enviado al sandbox.">
-                  Pagado en el lote
-                </Term>
-              </dt>
-              <dd className="tabular font-medium">{formatBase(paidBatch)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">
-                <Term hint="Operaciones que esperan una decisión humana; su importe queda apartado.">
-                  Reservado
-                </Term>
-              </dt>
-              <dd className="tabular font-medium">{formatBase(ledger.committedMinor)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Bloqueado o rechazado</dt>
-              <dd className="tabular font-medium">{formatBase(blocked)}</dd>
-            </div>
-          </dl>
-        </div>
-        <div
-          className="mt-5 flex h-2.5 gap-[2px] overflow-hidden rounded-full bg-muted"
-          role="img"
-          aria-label={`${used}% del presupuesto usado o reservado`}
-        >
-          <span className="bar-grow" style={{ width: pct(prev), background: STATE_COLOR.prev }} />
-          <span
-            className="bar-grow"
-            style={{ width: pct(paidBatch), background: STATE_COLOR.paid }}
-          />
-          <span
-            className="bar-grow"
-            style={{ width: pct(ledger.committedMinor), background: STATE_COLOR.pending }}
-          />
-        </div>
-        <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
-          {[
-            ["Pagos previos", STATE_COLOR.prev],
-            ["Pagado en el lote", STATE_COLOR.paid],
-            ["Reservado", STATE_COLOR.pending],
-          ].map(([l, c]) => (
-            <span key={l} className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full" style={{ background: c }} />
-              {l}
-            </span>
-          ))}
+          <div
+            className="tg-shimmer mt-5 flex h-3 gap-[2px] overflow-hidden rounded-full bg-muted"
+            role="img"
+            aria-label={`${used}% del presupuesto usado o reservado`}
+          >
+            <span className="bar-grow" style={{ width: pct(prev), background: STATE_COLOR.prev }} />
+            <span
+              className="bar-grow"
+              style={{ width: pct(paidBatch), background: STATE_COLOR.paid }}
+            />
+            <span
+              className="bar-grow"
+              style={{ width: pct(ledger.committedMinor), background: STATE_COLOR.pending }}
+            />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
+            {[
+              ["Pagos previos", STATE_COLOR.prev],
+              ["Pagado en el lote", STATE_COLOR.paid],
+              ["Reservado", STATE_COLOR.pending],
+            ].map(([l, c]) => (
+              <span key={l} className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full" style={{ background: c }} />
+                {l}
+              </span>
+            ))}
+          </div>
         </div>
       </Panel>
 
@@ -187,8 +190,11 @@ function Presupuestos() {
         <Panel title="Por categoría" description="Pagado y reservado, equivalente en USD">
           <Bars rows={group((e) => e.subject.category)} />
         </Panel>
-        <Panel title="Por agente" description="Pagado y reservado, equivalente en USD">
-          <Bars rows={group((e) => agentName(e.subject.agentId))} />
+        <Panel
+          title="Por proveedor / beneficiario"
+          description="Principales beneficiarios por monto pagado y reservado en USD"
+        >
+          <Bars rows={group((e) => e.subject.supplier).slice(0, 6)} />
         </Panel>
       </div>
 

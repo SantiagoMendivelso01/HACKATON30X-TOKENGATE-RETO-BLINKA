@@ -5,19 +5,27 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { ORG } from "./org";
 import { emptyRows, type Rows } from "./org-state";
+import { defaultConfig } from "./org-state";
+import { publicRecords } from "./public-records";
 
-let client: SupabaseClient | null = null;
 function db(): SupabaseClient | null {
-  const url = process.env["SUPABASE_URL"];
-  const key = process.env["SUPABASE_SERVICE_KEY"];
+  const url = process.env["TOKENGATE_DATABASE_URL"];
+  const key = process.env["TOKENGATE_DATABASE_SECRET_KEY"];
   if (!url || !key) return null;
-  return (client ??= createClient(url, key, {
+  return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-  }));
+    global: { fetch: (input, init) => {
+      const headers = new Headers(input instanceof Request ? input.headers : undefined);
+      new Headers(init?.headers).forEach((value, name) => headers.set(name, value));
+      if (key.startsWith('sb_') && headers.get('Authorization') === `Bearer ${key}`) headers.delete('Authorization');
+      headers.set('apikey', key);
+      return fetch(input, { ...init, headers });
+    } },
+  });
 }
 
 /** "supabase": every action is saved before it shows. "memory": no keys, nothing survives a reload. */
-export type StorageMode = "supabase" | "memory";
+export type StorageMode = "supabase" | "memory" | "readonly";
 
 export type LoadResult = { ok: true; mode: StorageMode; rows: Rows } | { ok: false; error: string };
 
@@ -29,7 +37,6 @@ async function selectAll<T>(sb: SupabaseClient, table: string, order: string): P
     const { data, error } = await sb
       .from(table)
       .select("payload")
-      .eq("org_id", ORG.id)
       .order(order)
       .range(from, from + PAGE - 1);
     if (error) throw new Error(`${table}: ${error.message}`);
@@ -49,15 +56,14 @@ export const loadOrgState = createServerFn({ method: "GET" }).handler(
         selectAll<Rows["policies"][number]>(sb, "pagador_policies", "seq"),
         selectAll<Rows["audit"][number]>(sb, "pagador_audit_events", "at"),
       ]);
-      return { ok: true, mode: "supabase", rows: { subjects, reviews, policies, audit } };
+      return { ok: true, mode: "readonly", rows: publicRecords({ subjects, reviews, policies, audit }, defaultConfig()) };
     } catch (e) {
-      console.error("Supabase load error", e);
       const missing = e instanceof Error && /does not exist|schema cache/i.test(e.message);
       return {
         ok: false,
         error: missing
-          ? "Faltan las tablas en Supabase. Corre la migración de supabase/migrations en el SQL Editor."
-          : "No se pudo leer la base de datos. Revisa SUPABASE_URL y SUPABASE_SERVICE_KEY.",
+          ? "Faltan las tablas necesarias en la base de datos."
+          : "No se pudo leer la base de datos. Revisa la conexión privada.",
       };
     }
   },
@@ -97,6 +103,8 @@ const Writes = z.object({
 export const saveWrites = createServerFn({ method: "POST" })
   .validator((d: unknown) => Writes.parse(d))
   .handler(async ({ data }): Promise<{ ok: true } | { ok: false; error: string }> => {
+    // Public anonymized projection must never grant writes to the source database.
+    if (process.env['TOKENGATE_DATABASE_SECRET_KEY']) return { ok: false, error: 'Los registros originales son de solo lectura; las acciones del panel son simuladas.' };
     const sb = db();
     if (!sb) return { ok: true };
     const { error } = await sb.rpc("pagador_save_writes", { p_org: ORG.id, p_writes: data });

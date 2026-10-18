@@ -33,7 +33,7 @@ function dateOf(e: EvaluatedSubject) {
 export function SubjectTable({
   rows,
   onOpen,
-  columns = ["reference", "supplier", "agent", "amount", "date", "status"],
+  columns = ["reference", "supplier", "description", "amount", "date", "status"],
   dateLabel,
   referenceLabel,
 }: {
@@ -108,7 +108,7 @@ export function SubjectTable({
           Ver decisión
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/app/decisiones" search={{ q: e.subject.reference }}>
+          <Link to="/app/auditoria" search={{ q: e.subject.reference }}>
             <History className="h-4 w-4" />
             Ver historial
           </Link>
@@ -139,13 +139,14 @@ export function SubjectTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((e) => (
+            {rows.map((e, i) => (
               <tr
                 key={e.subject.id}
+                style={{ animationDelay: `${i * 40}ms` }}
                 tabIndex={0}
                 onClick={() => onOpen(e.subject.id)}
                 onKeyDown={(ev) => ev.key === "Enter" && onOpen(e.subject.id)}
-                className="cursor-pointer border-b border-border/70 transition-colors last:border-0 hover:bg-background/70 focus-visible:bg-muted focus-visible:outline-none"
+                className="tg-row cursor-pointer border-b border-border/70 transition-colors last:border-0 hover:bg-background/70 focus-visible:bg-muted focus-visible:outline-none"
               >
                 {columns.map((c) => (
                   <td

@@ -1,5 +1,5 @@
 // Configuración inicial de la organización (empresa en EE. UU. con operación y proveedores en LatAm).
-// Todos estos valores se pueden editar y guardar desde Ajustes, Agentes y Políticas.
+// Todos estos valores se pueden editar y guardar desde Reglas y Ajustes (/app/ajustes).
 import type { Agent, OrgSeed, Supplier } from "./types";
 
 const MESES = [
@@ -17,7 +17,6 @@ const MESES = [
   "Diciembre",
 ];
 const today = new Date();
-const usd = (major: number) => ({ amountMinor: Math.round(major * 100), currency: "USD" as const });
 
 export const DEFAULT_SUPPLIERS: Supplier[] = [
   {
@@ -94,49 +93,7 @@ export const DEFAULT_SUPPLIERS: Supplier[] = [
   },
 ];
 
-export const DEFAULT_AGENTS: Agent[] = [
-  {
-    id: "ag-contractors",
-    name: "Contratistas LatAm",
-    purpose: "Paga a diseñadores, desarrolladores y contratistas en la región.",
-    status: "active",
-    categories: ["Diseño", "Desarrollo", "Servicios"],
-    spendingLimit: usd(8000),
-    policyIds: [
-      "Proveedores aprobados",
-      "Contrato ± tolerancia",
-      "Umbral de aprobación",
-      "Cuenta registrada",
-    ],
-  },
-  {
-    id: "ag-cloud",
-    name: "Infraestructura y nube",
-    purpose: "Gestiona hosting, nube y licencias técnicas.",
-    status: "active",
-    categories: ["Infraestructura", "Software"],
-    spendingLimit: usd(5000),
-    policyIds: ["Límite por transacción", "Presupuesto mensual"],
-  },
-  {
-    id: "ag-backoffice",
-    name: "Back office",
-    purpose: "Legal, contabilidad, logística y operaciones.",
-    status: "active",
-    categories: ["Legal", "Contabilidad", "Logística", "Operaciones"],
-    spendingLimit: usd(5000),
-    policyIds: ["Proveedores aprobados", "Duplicados", "Pagos partidos"],
-  },
-  {
-    id: "ag-growth",
-    name: "Crecimiento",
-    purpose: "Herramientas y campañas de marketing.",
-    status: "paused",
-    categories: ["Marketing"],
-    spendingLimit: usd(2000),
-    policyIds: ["Umbral de aprobación"],
-  },
-];
+export const DEFAULT_AGENTS: Agent[] = [];
 
 export const ORG: OrgSeed = {
   id: "org",

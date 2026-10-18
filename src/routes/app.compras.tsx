@@ -33,6 +33,8 @@ import type { Category, Currency, Purchase } from "@/lib/tokengate/types";
 export const Route = createFileRoute("/app/compras")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Compras — blinka" },
       { name: "description", content: "Solicitudes de compra enviadas por tus agentes." },
       { property: "og:title", content: "Compras — blinka" },

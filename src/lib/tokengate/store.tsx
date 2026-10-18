@@ -150,7 +150,8 @@ function useStoreValue(rows: Rows, mode: StorageMode) {
     ) as EvaluatedSubject<Purchase>[];
     const all: EvaluatedSubject[] = desc;
     const byId = new Map(all.map((e) => [e.subject.id, e]));
-    const agentName = (id: string) => seed.agents.find((a) => a.id === id)?.name ?? id;
+    const agentName = (id: string) =>
+      seed.agents.find((a) => a.id === id)?.name || "Agente pagador";
 
     const agentLog: DecisionRecord[] = all.map((e) => ({
       id: `ad-${e.subject.id}`,
@@ -267,6 +268,9 @@ function useStoreValue(rows: Rows, mode: StorageMode) {
       addInvoice: (invoice: Invoice) => dispatch({ type: "addInvoice", invoice }),
       addPurchase: (purchase: Purchase) => dispatch({ type: "addPurchase", purchase }),
       logEvent: (event: Omit<AuditEvent, "id" | "at">) => dispatch({ type: "audit", event }),
+      /** Approver fills the missing fields; the subject is re-evaluated by the engine. */
+      completeFields: (subjectId: string, values: Record<string, string>, note?: string) =>
+        dispatch({ type: "completeFields", subjectId, values, note }),
     };
   }, [state, mode, dispatch]);
 }
@@ -297,4 +301,5 @@ export function useTokenGate() {
 }
 
 /** Agent name for components outside the provider. */
-export const agentName = (id: string) => ORG.agents.find((a) => a.id === id)?.name ?? id;
+export const agentName = (id: string) =>
+  ORG.agents.find((a) => a.id === id)?.name || "Agente pagador";

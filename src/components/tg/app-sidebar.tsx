@@ -1,19 +1,17 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { getSimUser, signOutSimulated } from "@/lib/tokengate/sim-auth";
 import {
   LayoutDashboard,
   FileText,
-  ShoppingCart,
-  Bot,
-  SlidersHorizontal,
   Wallet,
   UserCheck,
-  ScrollText,
   ShieldCheck,
   Settings,
   Building2,
   FlaskConical,
   LogOut,
-  Bell,
+  ShoppingCart,
+  BellRing,
 } from "lucide-react";
 import {
   Sidebar,
@@ -44,38 +42,40 @@ type Item = { title: string; url: string; icon: typeof FileText; badge?: "attent
 
 export const navGroups: { label: string; items: Item[] }[] = [
   {
-    label: "General",
+    label: "Operación",
     items: [
-      { title: "Dashboard", url: "/app", icon: LayoutDashboard },
+      { title: "Resumen", url: "/app", icon: LayoutDashboard },
       { title: "Facturas", url: "/app/facturas", icon: FileText },
       { title: "Compras", url: "/app/compras", icon: ShoppingCart },
-      { title: "Agentes", url: "/app/agentes", icon: Bot },
+      { title: "Por aprobar", url: "/app/aprobaciones", icon: UserCheck, badge: "attention" },
     ],
   },
   {
-    label: "Control financiero",
+    label: "Control y Confianza",
     items: [
-      { title: "Aprobaciones", url: "/app/aprobaciones", icon: UserCheck, badge: "attention" },
-      { title: "Políticas de pago", url: "/app/politicas", icon: SlidersHorizontal },
-      { title: "Presupuestos", url: "/app/presupuestos", icon: Wallet },
-      { title: "Alertas", url: "/app/alertas", icon: Bell, badge: "alerts" },
+      { title: "Presupuesto", url: "/app/presupuestos", icon: Wallet },
+      { title: "Alertas", url: "/app/alertas", icon: BellRing },
+      {
+        title: "Auditoría y Decisiones",
+        url: "/app/auditoria",
+        icon: ShieldCheck,
+        badge: "alerts",
+      },
     ],
   },
   {
-    label: "Confianza",
-    items: [
-      { title: "Registro de decisiones", url: "/app/decisiones", icon: ScrollText },
-      { title: "Auditoría", url: "/app/auditoria", icon: ShieldCheck },
-    ],
+    label: "Configuración",
+    items: [{ title: "Reglas y Ajustes", url: "/app/ajustes", icon: Settings }],
   },
-  { label: "Configuración", items: [{ title: "Ajustes", url: "/app/ajustes", icon: Settings }] },
 ];
 
 export function AppSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed" && !isMobile;
   const path = useRouterState({ select: (r) => r.location.pathname });
+  const navigate = useNavigate();
   const { all, alerts, seed } = useTokenGate();
+  const user = getSimUser() ?? seed.user;
   const attention = all.filter((e) => needsAttention(e.status)).length;
   const critical = alerts.filter((a) => a.severity === "critical").length;
   const isActive = (url: string) =>
@@ -87,7 +87,7 @@ export function AppSidebar() {
         <Link
           to="/app"
           className="flex h-9 items-center gap-2 rounded-md px-1"
-          aria-label="Agente pagador, ir al dashboard"
+          aria-label="Agente pagador, ir al resumen"
         >
           {collapsed ? <Logo /> : <Wordmark />}
         </Link>
@@ -96,7 +96,7 @@ export function AppSidebar() {
           className="h-11 rounded-xl border border-sidebar-border bg-card"
           tooltip={seed.name}
         >
-          <div>
+          <Link to="/app/ajustes">
             <Building2 className="h-4 w-4" />
             <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
               <span className="truncate text-sm font-medium text-foreground">{seed.name}</span>
@@ -104,7 +104,7 @@ export function AppSidebar() {
                 {seed.jurisdiction} · {seed.period}
               </span>
             </span>
-          </div>
+          </Link>
         </SidebarMenuButton>
       </SidebarHeader>
 
@@ -160,15 +160,13 @@ export function AppSidebar() {
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton className="h-12 rounded-xl" tooltip={seed.user.name}>
+            <SidebarMenuButton className="h-12 rounded-xl" tooltip={user.name}>
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background">
-                {seed.user.initials}
+                {user.initials}
               </span>
               <span className="flex min-w-0 flex-col text-left leading-tight">
-                <span className="truncate text-sm font-medium text-foreground">
-                  {seed.user.name}
-                </span>
-                <span className="truncate text-xs text-muted-foreground">{seed.user.role}</span>
+                <span className="truncate text-sm font-medium text-foreground">{user.name}</span>
+                <span className="truncate text-xs text-muted-foreground">{user.role}</span>
               </span>
             </SidebarMenuButton>
           </DropdownMenuTrigger>
@@ -176,15 +174,18 @@ export function AppSidebar() {
             <DropdownMenuItem asChild>
               <Link to="/app/ajustes">
                 <Settings className="h-4 w-4" />
-                Ajustes
+                Reglas y Ajustes
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/">
-                <LogOut className="h-4 w-4" />
-                Cerrar sesión
-              </Link>
+            <DropdownMenuItem
+              onSelect={() => {
+                signOutSimulated();
+                navigate({ to: "/login", replace: true });
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+              Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
