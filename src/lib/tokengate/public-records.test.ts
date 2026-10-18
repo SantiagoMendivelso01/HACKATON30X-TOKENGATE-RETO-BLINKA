@@ -84,23 +84,28 @@ describe("public records", () => {
     expect(result.subjects[0]?.amount.amountMinor).toBe(12300);
     expect(JSON.stringify(result)).not.toContain("3005550000");
   });
-  it.each([48200, 67800])("converts legacy checkout COP %i pesos to centavos without editing the source", (pesos) => {
-    const purchase = {
-      ...invoice,
-      kind: "purchase" as const,
-      requestedAt: invoice.receivedAt,
-      budgetLine: "Compra",
-      amount: { amountMinor: pesos, currency: "COP" as const },
-      payload: { opcion_elegida: { tienda_nombre: "Comercio Test", precio_cop: pesos / 2 } },
-    };
-    const result = publicRecords({ ...emptyRows(), subjects: [purchase] }, defaultConfig());
-    expect(result.subjects[0]?.amount.amountMinor).toBe(pesos * 100);
-    expect(purchase.amount.amountMinor).toBe(pesos);
-    const normalized = result.subjects[0];
-    if (!normalized) throw new Error("Missing purchase");
-    expect(formatMoney(normalized.amount)).toBe(pesos === 48200 ? "COP 48,200" : "COP 67,800");
-    expect(publicRecords(result, defaultConfig()).subjects[0]?.amount.amountMinor).toBe(pesos * 100);
-  });
+  it.each([48200, 67800])(
+    "converts legacy checkout COP %i pesos to centavos without editing the source",
+    (pesos) => {
+      const purchase = {
+        ...invoice,
+        kind: "purchase" as const,
+        requestedAt: invoice.receivedAt,
+        budgetLine: "Compra",
+        amount: { amountMinor: pesos, currency: "COP" as const },
+        payload: { opcion_elegida: { tienda_nombre: "Comercio Test", precio_cop: pesos / 2 } },
+      };
+      const result = publicRecords({ ...emptyRows(), subjects: [purchase] }, defaultConfig());
+      expect(result.subjects[0]?.amount.amountMinor).toBe(pesos * 100);
+      expect(purchase.amount.amountMinor).toBe(pesos);
+      const normalized = result.subjects[0];
+      if (!normalized) throw new Error("Missing purchase");
+      expect(formatMoney(normalized.amount)).toBe(pesos === 48200 ? "COP 48,200" : "COP 67,800");
+      expect(publicRecords(result, defaultConfig()).subjects[0]?.amount.amountMinor).toBe(
+        pesos * 100,
+      );
+    },
+  );
   it("keeps native COP purchases in minor units", () => {
     const purchase = {
       ...invoice,

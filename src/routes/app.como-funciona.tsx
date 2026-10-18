@@ -28,6 +28,8 @@ export const Route = createFileRoute("/app/como-funciona")({
       },
       { property: "og:title", content: "Cómo funciona — blinka" },
       { property: "og:description", content: "Cada factura cruza la misma puerta." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ComoFunciona,
