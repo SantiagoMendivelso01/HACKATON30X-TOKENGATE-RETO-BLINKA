@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -25,7 +26,7 @@ import {
   type Rows,
   type State,
 } from "./org-state";
-import { saveWrites, type StorageMode } from "./db.functions";
+import { loadOrgState, saveWrites, type StorageMode } from "./db.functions";
 import type {
   AlertSeverity,
   AnySubject,
@@ -93,6 +94,42 @@ function useStoreValue(rows: Rows, mode: StorageMode) {
   const latest = useRef(state);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const save = useServerFn(saveWrites);
+  const load = useServerFn(loadOrgState);
+
+  // Records that arrive in the database while the panel is open show up on their own.
+  useEffect(() => {
+    if (mode === "memory") return;
+    let busy = false;
+    const tick = async () => {
+      if (busy || document.hidden) return;
+      busy = true;
+      try {
+        const res = await load();
+        if (!res.ok) return;
+        const cur = latest.current;
+        const known = new Set([...cur.invoices, ...cur.purchases].map((s) => s.id));
+        const fresh = stateFromRows(res.rows);
+        const newPurchases = fresh.purchases.filter((p) => !known.has(p.id));
+        const newInvoices = fresh.invoices.filter((i) => !known.has(i.id));
+        if (!newPurchases.length && !newInvoices.length) return;
+        const next = {
+          ...cur,
+          purchases: [...cur.purchases, ...newPurchases],
+          invoices: [...cur.invoices, ...newInvoices],
+        };
+        latest.current = next;
+        setState(next);
+        for (const p of newPurchases) toast.success(`Nueva compra recibida: ${p.reference}`);
+        for (const i of newInvoices) toast.success(`Nueva factura recibida: ${i.reference}`);
+      } catch {
+        // Silent: the next tick retries.
+      } finally {
+        busy = false;
+      }
+    };
+    const id = window.setInterval(tick, 10_000);
+    return () => window.clearInterval(id);
+  }, [mode, load]);
 
   /** Saves what the action adds and only then shows it. Actions run one at a time, in order. */
   const dispatch = useCallback(

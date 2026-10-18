@@ -22,3 +22,4 @@
 - Preserve Lovable runtime/bootstrap configuration when importing repository source — upstream deployment configuration targets a different host.
 - Decision explanations use pipeline.ts and the shared DecisionPipeline component; text and voice input use ai-read.functions with text-parse fallback — keeps all screens aligned with engine results.
 - Voice dictation records audio in the browser and transcribes via /api/transcribe (Lovable AI Gateway, LOVABLE_API_KEY server-only) — browser SpeechRecognition was unreliable, especially in iframes.
+- Do not register the Supabase bearer attacher in src/start.ts while no server function requires real auth — sign-in is simulated and the attacher crashed the published client.
