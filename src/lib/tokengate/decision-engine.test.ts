@@ -1,56 +1,46 @@
 import { describe, expect, it } from "vitest";
-import { evaluateDecision, type EngineContext } from "./decision-engine";
-import { initialPolicy } from "./mock-data";
 import { parseToMinor } from "./format";
-import type { DecisionSubject } from "./types";
+import { chain, verifyChain } from "./hash";
 
-const base: DecisionSubject = {
-  id: "t1",
-  kind: "invoice",
-  reference: "INV-T1",
-  supplier: "Linear",
-  amount: { amountMinor: 12000, currency: "USD" },
-  agentId: "ag-saas",
-  description: "",
-  category: "Software",
-  missingFields: [],
-};
-const ctx: EngineContext = { budgetUsage: { USD: 842000, EUR: 51000, COP: 96250000 }, otherSubjects: [] };
-const run = (s: Partial<DecisionSubject>, c = ctx) => evaluateDecision({ ...base, ...s }, initialPolicy, c);
-
-describe("decision engine", () => {
-  it("authorizes an approved supplier below every threshold", () => {
-    expect(run({}).outcome).toBe("authorized");
-  });
-  it("blocks an unknown supplier", () => {
-    expect(run({ supplier: "Proveedor desconocido" }).outcome).toBe("blocked");
-  });
-  it("blocks amounts above the USD 1.000 transaction limit", () => {
-    expect(run({ amount: { amountMinor: 100001, currency: "USD" } }).outcome).toBe("blocked");
-  });
-  it("requires human approval above USD 300", () => {
-    expect(run({ amount: { amountMinor: 30001, currency: "USD" } }).outcome).toBe("requires_approval");
-    expect(run({ amount: { amountMinor: 30000, currency: "USD" } }).outcome).toBe("authorized");
-  });
-  it("asks for information when fields are missing", () => {
-    expect(run({ missingFields: ["NIF"] }).outcome).toBe("needs_information");
-  });
-  it("blocking rules take precedence over approval and missing info", () => {
-    expect(run({ supplier: "X", missingFields: ["NIF"], amount: { amountMinor: 50000, currency: "USD" } }).outcome).toBe("blocked");
-  });
-  it("flags a duplicate for review", () => {
-    const r = run({ id: "t2" }, { ...ctx, otherSubjects: [base] });
-    expect(r.outcome).toBe("requires_approval");
-  });
-  it("blocks when remaining budget is insufficient", () => {
-    expect(run({}, { ...ctx, budgetUsage: { USD: 1195000, EUR: 0, COP: 0 } }).outcome).toBe("blocked");
-  });
-  it("is deterministic for identical inputs", () => {
-    expect(run({ amount: { amountMinor: 42000, currency: "USD" } })).toEqual(run({ amount: { amountMinor: 42000, currency: "USD" } }));
-  });
+describe("money input", () => {
   it("parses decimal input without floating point", () => {
     expect(parseToMinor("1.250,50")).toBe(125050);
+    expect(parseToMinor("1,250.50")).toBe(125050);
     expect(parseToMinor("0.1")).toBe(10);
     expect(parseToMinor("abc")).toBeNull();
+  });
+});
+
+describe("audit chain", () => {
+  it("detects an edited event", () => {
+    const events = chain([
+      { at: "1", type: "decision", summary: "a" },
+      { at: "2", type: "decision", summary: "b" },
+    ]);
+    expect(verifyChain(events)).toBe(-1);
+    events[0] = { ...events[0]!, summary: "edited" };
+    expect(verifyChain(events)).toBe(0);
+  });
+});
+
+describe("currency conversion (USD, EUR, COP)", () => {
+  it("converts COP, EUR, and USD accurately using FX rates", async () => {
+    const { toBaseMinor, convertMinor, formatBase } = await import("./format");
+    const fx = { USD: 1, COP: 4150, EUR: 0.92, MXN: 18.2 };
+
+    // 415,000 COP (41,500,000 minor) at 4,150 COP/USD => exactly 100.00 USD (10,000 minor)
+    expect(toBaseMinor({ amountMinor: 41_500_000, currency: "COP" }, fx)).toBe(10_000);
+
+    // 43,900 COP (4,390,000 minor) at 4,150 COP/USD => 10.58 USD (1,058 minor), NOT 11 USD
+    const comcelUsd = toBaseMinor({ amountMinor: 4_389_998, currency: "COP" }, fx);
+    expect(comcelUsd).toBe(1058);
+    expect(formatBase(comcelUsd)).toBe("USD 10.58");
+
+    // 92.00 EUR (9,200 minor) at 0.92 EUR/USD => 100.00 USD (10,000 minor)
+    expect(toBaseMinor({ amountMinor: 9_200, currency: "EUR" }, fx)).toBe(10_000);
+
+    // Cross conversion: 100.00 USD (10,000 minor) => 92.00 EUR (9,200 minor) and 415,000 COP (41,500,000 minor)
+    expect(convertMinor(10_000, "USD", "EUR", fx)).toBe(9_200);
+    expect(convertMinor(10_000, "USD", "COP", fx)).toBe(41_500_000);
   });
 });

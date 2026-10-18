@@ -1,80 +1,46 @@
-// In-memory demo store (React context). Not a tamper-proof audit log; resets on reload.
-import { createContext, useContext, useMemo, useReducer, type ReactNode } from "react";
-import { evaluateDecision } from "./decision-engine";
-import { CURRENT_USER, baselineUsage, initialAudit, initialInvoices, initialPolicy, initialPurchases, agents } from "./mock-data";
-import { displayStatus } from "./status";
-import type { AnySubject, AuditEvent, DecisionRecord, DecisionResult, DecisionSubject, DisplayStatus, HumanAction, HumanReview, Invoice, Policy, Purchase } from "./types";
-
-type State = {
-  invoices: Invoice[];
-  purchases: Purchase[];
-  policy: Policy;
-  reviews: Record<string, HumanReview>;
-  humanLog: DecisionRecord[];
-  audit: AuditEvent[];
-  clock: number; // monotonic demo clock (ms) so new events sort after seed data
-};
-
-type Action =
-  | { type: "review"; subjectId: string; action: HumanAction; note?: string | undefined; result: DecisionResult }
-  | { type: "savePolicy"; policy: Policy; summary: string }
-  | { type: "addInvoice"; invoice: Invoice }
-  | { type: "audit"; event: Omit<AuditEvent, "id" | "at"> };
-
-const START = Date.parse("2026-10-17T12:00:00Z");
-
-function nextAt(state: State) {
-  const clock = state.clock + 60_000;
-  return { clock, at: new Date(clock).toISOString() };
-}
-
-const actionLabel: Record<HumanAction, string> = {
-  approved: "aprobada (autorización simulada, sin movimiento de dinero)",
-  rejected: "rechazada",
-  info_requested: "devuelta: se solicitó más información",
-};
-
-function reducer(state: State, a: Action): State {
-  const { clock, at } = nextAt(state);
-  switch (a.type) {
-    case "review": {
-      const subject = [...state.invoices, ...state.purchases].find((s) => s.id === a.subjectId);
-      const ref = subject?.reference ?? a.subjectId;
-      return {
-        ...state,
-        clock,
-        reviews: { ...state.reviews, [a.subjectId]: { action: a.action, by: CURRENT_USER, at, note: a.note } },
-        humanLog: [
-          { id: `hd-${clock}`, subjectId: a.subjectId, at, actor: "human", actorName: CURRENT_USER, result: a.result, humanAction: a.action, note: a.note },
-          ...state.humanLog,
-        ],
-        audit: [
-          { id: `au-${clock}`, at, type: "human_review", actor: CURRENT_USER, actorKind: "human", summary: `${ref} ${actionLabel[a.action]}`, reason: a.note || undefined },
-          ...state.audit,
-        ],
-      };
-    }
-    case "savePolicy": {
-      const [maj, min] = state.policy.version.slice(1).split(".").map(Number);
-      const policy = { ...a.policy, version: `v${maj}.${(min ?? 0) + 1}` };
-      return {
-        ...state,
-        clock,
-        policy,
-        audit: [{ id: `au-${clock}`, at, type: "policy_change", actor: CURRENT_USER, actorKind: "human", summary: `Política actualizada a ${policy.version}`, reason: a.summary }, ...state.audit],
-      };
-    }
-    case "addInvoice":
-      return {
-        ...state,
-        clock,
-        invoices: [...state.invoices, a.invoice],
-        audit: [{ id: `au-${clock}`, at, type: "invoice_upload", actor: CURRENT_USER, actorKind: "human", summary: `Factura ${a.invoice.reference} cargada`, reason: `${a.invoice.supplier} · simulación` }, ...state.audit],
-      };
-    case "audit":
-      return { ...state, clock, audit: [{ ...a.event, id: `au-${clock}`, at }, ...state.audit] };
-  }
-}
+// Store (React context). State lives in Supabase when the server has its keys (db.functions.ts);
+// each action is saved first and only shows once the database confirms it. Without keys it
+// runs in memory and resets on reload.
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { runLedger, type Ledger, type LedgerState } from "./decision-engine";
+import { ORG } from "./org";
+import { displayStatus, needsAttention } from "./status";
+import { chain, verifyChain, type ChainedEvent } from "./hash";
+import { formatBase, formatMoney } from "./format";
+import {
+  apply,
+  stateFromRows,
+  type Action,
+  type OrgState,
+  type Rows,
+  type State,
+} from "./org-state";
+import { saveWrites, type StorageMode } from "./db.functions";
+import type {
+  AlertSeverity,
+  AnySubject,
+  AuditEvent,
+  DecisionRecord,
+  DecisionResult,
+  DecisionSubject,
+  DisplayStatus,
+  HumanAction,
+  HumanReview,
+  Invoice,
+  OrgSeed,
+  Policy,
+  Purchase,
+} from "./types";
 
 export type EvaluatedSubject<T extends DecisionSubject = AnySubject> = {
   subject: T;
@@ -82,61 +48,227 @@ export type EvaluatedSubject<T extends DecisionSubject = AnySubject> = {
   status: DisplayStatus;
   review?: HumanReview | undefined;
   evaluatedAt: string;
+  state: LedgerState;
+  baseMinor: number;
+  payment?: { txn: string; rail: string; at: string } | undefined;
 };
 
-/** Runs the engine for every subject, comparing each one only against earlier records for duplicates. */
-function evaluateAll<T extends DecisionSubject>(list: T[], policy: Policy, reviews: State["reviews"], dateOf: (s: T) => string) {
-  const sorted = [...list].sort((a, b) => dateOf(a).localeCompare(dateOf(b)));
-  return sorted.map((subject, i): EvaluatedSubject<T> => {
-    const result = evaluateDecision(subject, policy, { budgetUsage: baselineUsage, otherSubjects: sorted.slice(0, i) });
-    const review = reviews[subject.id];
-    return { subject, result, review, status: displayStatus(result.outcome, review), evaluatedAt: dateOf(subject) };
-  });
+export type AlertItem = {
+  severity: AlertSeverity;
+  text: string;
+  subjectId?: string | undefined;
+  at: string;
+};
+export type TrailEvent = ChainedEvent<{
+  at: string;
+  type: AuditEvent["type"];
+  summary: string;
+  actor: string;
+  actorKind: AuditEvent["actorKind"];
+  reason?: string | undefined;
+  subjectId?: string | undefined;
+}>;
+
+function ledgerFor(
+  seed: OrgSeed,
+  o: OrgState,
+  policy: Policy = o.policy,
+  reviews = o.reviews,
+): Ledger<AnySubject> {
+  return runLedger<AnySubject>(
+    [...o.invoices, ...o.purchases],
+    policy,
+    {
+      fx: seed.fx,
+      suppliers: seed.suppliers,
+      agents: seed.agents,
+      baselineUsedMinor: seed.baselineUsedMinor,
+    },
+    reviews,
+  );
 }
 
-function useStoreValue() {
-  const [state, dispatch] = useReducer(reducer, {
-    invoices: initialInvoices,
-    purchases: initialPurchases,
-    policy: initialPolicy,
-    reviews: {},
-    humanLog: [],
-    audit: initialAudit,
-    clock: START,
-  });
+function useStoreValue(rows: Rows, mode: StorageMode) {
+  const [state, setState] = useState<State>(() => stateFromRows(rows));
+  const latest = useRef(state);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const save = useServerFn(saveWrites);
+
+  /** Saves what the action adds and only then shows it. Actions run one at a time, in order. */
+  const dispatch = useCallback(
+    (action: Action): Promise<boolean> => {
+      const run = async () => {
+        const { next, writes } = apply(latest.current, action);
+        if (mode === "supabase") {
+          try {
+            const res = await save({ data: writes });
+            if (!res.ok) {
+              toast.error(res.error);
+              return false;
+            }
+          } catch {
+            toast.error("No hay conexión con el servidor. No se aplicó ningún cambio.");
+            return false;
+          }
+        }
+        latest.current = next;
+        setState(next);
+        return true;
+      };
+      const p = queue.current.then(run, run);
+      queue.current = p.catch(() => undefined);
+      return p;
+    },
+    [mode, save],
+  );
 
   return useMemo(() => {
-    const invoices = evaluateAll(state.invoices, state.policy, state.reviews, (s) => s.issueDate).reverse();
-    const purchases = evaluateAll(state.purchases, state.policy, state.reviews, (s) => s.requestedAt).reverse();
-    const all: EvaluatedSubject[] = [...invoices, ...purchases];
+    const o = state;
+    const seed: OrgSeed = {
+      id: ORG.id,
+      ...o.config,
+      policy: o.policy,
+    };
+    const ledger = ledgerFor(seed, o);
+
+    const evaluated: EvaluatedSubject[] = ledger.entries.map((e) => ({
+      subject: e.subject,
+      result: e.result,
+      review: e.review,
+      status: displayStatus(e.result.outcome, e.review),
+      evaluatedAt: e.subject.receivedAt,
+      state: e.state,
+      baseMinor: e.baseMinor,
+      payment: e.payment,
+    }));
+    const desc = [...evaluated].reverse();
+    const evaluatedInvoices = desc.filter(
+      (e) => e.subject.kind === "invoice",
+    ) as EvaluatedSubject<Invoice>[];
+    const evaluatedPurchases = desc.filter(
+      (e) => e.subject.kind === "purchase",
+    ) as EvaluatedSubject<Purchase>[];
+    const all: EvaluatedSubject[] = desc;
     const byId = new Map(all.map((e) => [e.subject.id, e]));
+    const agentName = (id: string) => seed.agents.find((a) => a.id === id)?.name ?? id;
 
     const agentLog: DecisionRecord[] = all.map((e) => ({
       id: `ad-${e.subject.id}`,
       subjectId: e.subject.id,
       at: e.evaluatedAt,
       actor: "agent",
-      actorName: agents.find((a) => a.id === e.subject.agentId)?.name ?? "Agente",
+      actorName: agentName(e.subject.agentId),
       result: e.result,
     }));
-    const decisionLog = [...state.humanLog, ...agentLog].sort((a, b) => b.at.localeCompare(a.at));
+    const decisionLog = [...o.humanLog, ...agentLog].sort((a, b) => b.at.localeCompare(a.at));
+
+    // Alerts raised while evaluating, plus queue age and budget level.
+    const alerts: AlertItem[] = [];
+    for (const e of all)
+      for (const r of e.result.rules)
+        if (r.alert && r.status !== "passed")
+          alerts.push({ ...r.alert, subjectId: e.subject.id, at: e.evaluatedAt });
+    const now = state.clock;
+    for (const e of all.filter((x) => needsAttention(x.status))) {
+      const d = Math.floor((now - Date.parse(e.evaluatedAt)) / 86_400_000);
+      if (d >= 2)
+        alerts.push({
+          severity: "medium",
+          text: `Lleva ${d} días esperando una decisión humana`,
+          subjectId: e.subject.id,
+          at: e.evaluatedAt,
+        });
+    }
+    const pct = (ledger.availableMinor / o.policy.monthlyBudget) * 100;
+    if (pct < o.policy.budgetAlertPct)
+      alerts.push({
+        severity: "high",
+        text: `Presupuesto bajo: quedan ${formatBase(ledger.availableMinor)} (${Math.max(0, pct).toFixed(0)}% del periodo)`,
+        at: new Date(now).toISOString(),
+      });
+    const sevOrder: Record<AlertSeverity, number> = { critical: 0, high: 1, medium: 2 };
+    alerts.sort((a, b) => sevOrder[a.severity] - sevOrder[b.severity] || b.at.localeCompare(a.at));
+
+    // Chronological, hash-chained audit trail: human/system events + every agent decision and payment.
+    const raw: Omit<TrailEvent, "prev" | "hash">[] = [
+      ...o.audit.map((e) => ({
+        at: e.at,
+        type: e.type,
+        summary: e.summary,
+        actor: e.actor,
+        actorKind: e.actorKind,
+        reason: e.reason,
+        subjectId: e.subjectId,
+      })),
+      ...evaluated.flatMap((e) => {
+        const out: Omit<TrailEvent, "prev" | "hash">[] = [
+          {
+            at: e.evaluatedAt,
+            type: "decision",
+            actor: agentName(e.subject.agentId),
+            actorKind: "agent",
+            subjectId: e.subject.id,
+            summary: `${e.subject.reference} · ${e.subject.supplier} · ${formatMoney(e.subject.amount)} → ${({ authorized: "autorizada", blocked: "bloqueada", requires_approval: "escalada a aprobación", needs_information: "pendiente de información" } as const)[e.result.outcome]}`,
+            reason: `${e.result.explanation} (política ${e.result.policyVersion})`,
+          },
+        ];
+        if (e.payment)
+          out.push({
+            at: e.payment.at,
+            type: "payment",
+            actor: e.payment.rail,
+            actorKind: "system",
+            subjectId: e.subject.id,
+            summary: `Pago ${e.payment.txn} · ${formatBase(e.baseMinor)}`,
+            reason: "Sandbox: no se movió dinero real.",
+          });
+        return out;
+      }),
+    ].sort((a, b) => a.at.localeCompare(b.at));
+    const trail = chain(raw);
+    const brokenAt = verifyChain(trail);
 
     return {
-      ...state,
-      evaluatedInvoices: invoices,
-      evaluatedPurchases: purchases,
+      ...o,
+      seed,
+      ledger,
+      evaluatedInvoices,
+      evaluatedPurchases,
       all,
       byId,
       decisionLog,
-      review: (subjectId: string, action: HumanAction, note?: string) => {
-        const e = byId.get(subjectId);
-        if (e) dispatch({ type: "review", subjectId, action, note, result: e.result });
+      alerts,
+      trail: trail as TrailEvent[],
+      brokenAt,
+      agentName,
+      now: new Date(now).toISOString(),
+      /** Re-runs the whole period with another policy (used by natural-language rules). */
+      simulate: (policy: Policy) => {
+        const l = ledgerFor(seed, o, policy);
+        return l.entries
+          .map((e) => ({
+            subject: e.subject,
+            before: byId.get(e.subject.id)!.status,
+            after: displayStatus(e.result.outcome, e.review),
+          }))
+          .filter((d) => d.before !== d.after);
       },
-      savePolicy: (policy: Policy, summary: string) => dispatch({ type: "savePolicy", policy, summary }),
+      /** Where actions are saved. */
+      mode,
+      // Each action resolves to true once saved, or false (with an error toast) if nothing changed.
+      review: async (subjectId: string, action: HumanAction, note?: string) => {
+        const e = byId.get(subjectId);
+        return e ? dispatch({ type: "review", subjectId, action, note, result: e.result }) : false;
+      },
+      savePolicy: (policy: Policy, summary: string) =>
+        dispatch({ type: "savePolicy", policy, summary }),
+      saveConfig: (config: OrgState["config"], summary: string) =>
+        dispatch({ type: "saveConfig", config, summary }),
       addInvoice: (invoice: Invoice) => dispatch({ type: "addInvoice", invoice }),
+      addPurchase: (purchase: Purchase) => dispatch({ type: "addPurchase", purchase }),
       logEvent: (event: Omit<AuditEvent, "id" | "at">) => dispatch({ type: "audit", event }),
     };
-  }, [state]);
+  }, [state, mode, dispatch]);
 }
 
 type Store = ReturnType<typeof useStoreValue>;
@@ -144,8 +276,17 @@ type Store = ReturnType<typeof useStoreValue>;
 const g = globalThis as unknown as { __tokengateCtx?: React.Context<Store | null> };
 const Ctx = (g.__tokengateCtx ??= createContext<Store | null>(null));
 
-export function TokenGateProvider({ children }: { children: ReactNode }) {
-  const value = useStoreValue();
+export function TokenGateProvider({
+  rows,
+  mode,
+  children,
+}: {
+  /** What the database already has (from the /app loader). */
+  rows: Rows;
+  mode: StorageMode;
+  children: ReactNode;
+}) {
+  const value = useStoreValue(rows, mode);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -155,4 +296,5 @@ export function useTokenGate() {
   return v;
 }
 
-export const agentName = (id: string) => agents.find((a) => a.id === id)?.name ?? id;
+/** Agent name for components outside the provider. */
+export const agentName = (id: string) => ORG.agents.find((a) => a.id === id)?.name ?? id;

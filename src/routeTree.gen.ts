@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppAgentesRouteImport } from './routes/app.agentes'
 import { Route as AppAjustesRouteImport } from './routes/app.ajustes'
+import { Route as AppAlertasRouteImport } from './routes/app.alertas'
 import { Route as AppAprobacionesRouteImport } from './routes/app.aprobaciones'
 import { Route as AppAuditoriaRouteImport } from './routes/app.auditoria'
 import { Route as AppComprasRouteImport } from './routes/app.compras'
@@ -51,6 +52,11 @@ const AppAgentesRoute = AppAgentesRouteImport.update({
 const AppAjustesRoute = AppAjustesRouteImport.update({
   id: '/ajustes',
   path: '/ajustes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAlertasRoute = AppAlertasRouteImport.update({
+  id: '/alertas',
+  path: '/alertas',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAprobacionesRoute = AppAprobacionesRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/app/agentes': typeof AppAgentesRoute
   '/app/ajustes': typeof AppAjustesRoute
+  '/app/alertas': typeof AppAlertasRoute
   '/app/aprobaciones': typeof AppAprobacionesRoute
   '/app/auditoria': typeof AppAuditoriaRoute
   '/app/compras': typeof AppComprasRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/app/agentes': typeof AppAgentesRoute
   '/app/ajustes': typeof AppAjustesRoute
+  '/app/alertas': typeof AppAlertasRoute
   '/app/aprobaciones': typeof AppAprobacionesRoute
   '/app/auditoria': typeof AppAuditoriaRoute
   '/app/compras': typeof AppComprasRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/app/agentes': typeof AppAgentesRoute
   '/app/ajustes': typeof AppAjustesRoute
+  '/app/alertas': typeof AppAlertasRoute
   '/app/aprobaciones': typeof AppAprobacionesRoute
   '/app/auditoria': typeof AppAuditoriaRoute
   '/app/compras': typeof AppComprasRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/app/agentes'
     | '/app/ajustes'
+    | '/app/alertas'
     | '/app/aprobaciones'
     | '/app/auditoria'
     | '/app/compras'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/app/agentes'
     | '/app/ajustes'
+    | '/app/alertas'
     | '/app/aprobaciones'
     | '/app/auditoria'
     | '/app/compras'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/app/agentes'
     | '/app/ajustes'
+    | '/app/alertas'
     | '/app/aprobaciones'
     | '/app/auditoria'
     | '/app/compras'
@@ -231,6 +243,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAjustesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/alertas': {
+      id: '/app/alertas'
+      path: '/alertas'
+      fullPath: '/app/alertas'
+      preLoaderRoute: typeof AppAlertasRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/aprobaciones': {
       id: '/app/aprobaciones'
       path: '/aprobaciones'
@@ -286,6 +305,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAgentesRoute: typeof AppAgentesRoute
   AppAjustesRoute: typeof AppAjustesRoute
+  AppAlertasRoute: typeof AppAlertasRoute
   AppAprobacionesRoute: typeof AppAprobacionesRoute
   AppAuditoriaRoute: typeof AppAuditoriaRoute
   AppComprasRoute: typeof AppComprasRoute
@@ -299,6 +319,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAgentesRoute: AppAgentesRoute,
   AppAjustesRoute: AppAjustesRoute,
+  AppAlertasRoute: AppAlertasRoute,
   AppAprobacionesRoute: AppAprobacionesRoute,
   AppAuditoriaRoute: AppAuditoriaRoute,
   AppComprasRoute: AppComprasRoute,
